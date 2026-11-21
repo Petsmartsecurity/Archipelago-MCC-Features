@@ -237,7 +237,7 @@ void PipeClient::HandleMessage(const std::string& message)
 
     if (message.rfind(completedPrefix, 0) == 0)
     {
-        bool completed[9] = {};
+        bool completed[10] = {};  // 10 CE missions; was [9] while indices 0..9 are written and read (stack overwrite)
         std::string data = message.substr(completedPrefix.size());
         if (!data.empty())
         {

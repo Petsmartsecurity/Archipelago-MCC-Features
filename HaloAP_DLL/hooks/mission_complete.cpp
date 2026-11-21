@@ -10,8 +10,11 @@ namespace haloap {
 
     namespace {
         // Pattern for the start of FUN_180ac3854 (the game_won victory handler).
+        // The 31-byte prologue alone also matched RVA 0xd57cb0; extended through the stack-cookie load
+        // (RIP-relative operand wildcarded) it is unique in halo1.dll build 2025.08.16.178512.1.
         const char* kGameWonPattern =
-            "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 54 41 55 41 56 41 57 48 81 EC 40 01 00 00";
+            "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 54 41 55 41 56 41 57 48 81 EC 40 01 00 00 "
+            "48 8B 05 ? ? ? ? 48 33 C4 48";
 
         // Offset of the current mission name string inside halo1.dll.
         // Verified via Cheat Engine.

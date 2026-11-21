@@ -13,7 +13,6 @@
 #include "hooks/mission_load.h"
 #include "hooks/shell_level_load.h"
 #include "hooks/shell_command.h"
-#include "hooks/load_level_solo.h"
 #include "hooks/mission_select_block.h"
 #include "hooks/chapter_title.h"
 #include "hooks/skull_hook.h"
@@ -64,14 +63,12 @@ namespace
         }
         haloap::InstallMissionIdLookupHook(g_pipe);
         haloap::InstallMissionLoadHook(g_pipe);
-        haloap::InstallLoadLevelSoloHook(g_pipe);
         haloap::InstallChapterTitleHook(g_pipe);
         haloap::InstallSkullHook(g_pipe);
     }
 
     void UninstallHalo1Hooks()
     {
-        haloap::UninstallLoadLevelSoloHook();
         haloap::UninstallMissionLoadHook();
         haloap::UninstallMissionCompleteHook();
         haloap::UninstallMissionIdLookupHook();

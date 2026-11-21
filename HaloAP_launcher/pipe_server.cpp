@@ -68,6 +68,7 @@ void PipeServer::Stop() {
 }
 
 bool PipeServer::Send(const std::string& message) {
+    std::lock_guard<std::mutex> lock(m_sendMutex);
     if (!m_connected.load() || m_pipe == INVALID_HANDLE_VALUE) {
         return false;
     }

@@ -19,7 +19,7 @@ namespace haloap {
         // Get the number of currently unlocked missions.
         int getUnlockedCount() const;
         
-        void setMissionCompletions(const bool completed[9]);
+        void setMissionCompletions(const bool completed[10]);
         
         void setFinalMission(int idx);
 

@@ -2,6 +2,8 @@
 #include "data/mission_map.h"
 #include "data/chapter_map.h"
 #include "shared/common.h"
+#include "pipe_protocol.h"
+#include <atomic>
 #include <iostream>
 #include <vector>
 #include <set>
@@ -28,7 +30,7 @@ namespace haloap {
     {"Keyes", 8},
     {"The Maw", 9},
     };  
-    int m_finalMission = 9;
+    std::atomic<int> m_finalMission{ 9 };
     
     std::unordered_map<std::string, int> MISSION_CODE_TO_INDEX = {
     {"a10", 0},
@@ -95,6 +97,12 @@ namespace haloap {
         m_slot = slot;
         m_password = password;
 
+        {
+            // Memory only until the slot connects: the pending file is keyed by seed, which we don't know yet.
+            std::lock_guard<std::mutex> lock(m_pendingMutex);
+            m_pending = PendingChecks();
+        }
+
         try {
             // Construct APClient. The UUID should be stable across runs for a user
             // so the server recognizes them, but for alpha we generate one per run.
@@ -116,6 +124,10 @@ namespace haloap {
         m_client->set_slot_refused_handler([this](const std::list<std::string>& reasons) { OnSlotRefused(reasons); });
         m_client->set_items_received_handler([this](const std::list<APClient::NetworkItem>& items) { OnItemsReceived(items); });
         m_client->set_print_json_handler([this](const APClient::PrintJSONArgs& args) { OnPrintJson(args); });
+        m_client->set_location_checked_handler([this](const std::list<int64_t>& locs) { OnLocationChecked(locs); });
+        // Without this, apclientpp marks our own checks done locally and never reports the server's echo,
+        // so pending checks would never be confirmed during a session (Phase 2 QA B1).
+        m_client->set_receive_own_locations(true);
 
         std::cout << "[ap] connecting to " << serverUri << " as slot '" << slot << "'...\n";
         return true;
@@ -125,6 +137,7 @@ namespace haloap {
         if (m_stopped.load()) return;
         if (m_client) {
             m_client->poll();
+            if (m_flushRequested.load() || m_goalRequested.load()) FlushPending();
         }
     }
 
@@ -138,7 +151,12 @@ namespace haloap {
     bool APBridge::HandleDllMessage(const std::string& message) {
         const std::string missionCompPrefix = "MISSION_COMPLETE: ";
         if (message.rfind(missionCompPrefix, 0) == 0) {
-            std::string missionCode = message.substr(missionCompPrefix.size());
+            auto parsedCode = ParseMissionComplete(message);
+            if (!parsedCode) {
+                std::cerr << "[ap] malformed MISSION_COMPLETE message ignored\n";
+                return true;
+            }
+            const std::string& missionCode = *parsedCode;
             const auto& map = GetMissionIdMap();
             auto it = map.find(missionCode);
             if (it == map.end()) {
@@ -153,9 +171,15 @@ namespace haloap {
 
             SendLocation(locationId);
         
-            if (MISSION_CODE_TO_INDEX[missionCode] == m_finalMission)
+            auto idx = MISSION_CODE_TO_INDEX.find(missionCode);
+            if (idx != MISSION_CODE_TO_INDEX.end() && idx->second == m_finalMission.load())
             {
-                m_client->StatusUpdate(APClient::ClientStatus::GOAL);
+                // Persisted as its own flag: the goal mission's completion is never a slot location (Phase 2 QA M1).
+                {
+                    std::lock_guard<std::mutex> lock(m_pendingMutex);
+                    m_pending.SetGoalReached();
+                }
+                m_goalRequested.store(true);  // sent by the poll thread once the slot is connected
             }
         
             return true;
@@ -163,15 +187,9 @@ namespace haloap {
         const std::string missionPrefix = "MISSION_LOAD: ";
         if (message.rfind(missionPrefix, 0) == 0)
         {
-            std::string missionCode = message.substr(missionPrefix.size());
-            // Extract mission code from "path='levels\d40\d40'"
-            size_t levelsPos = missionCode.find("levels\\");
-            if (levelsPos != std::string::npos) {
-                size_t start = levelsPos + 7; // length of "levels\"
-                size_t end = missionCode.find('\\', start);
-                if (end != std::string::npos) {
-                    m_mission = missionCode.substr(start, end - start);
-                }
+            // Mission code comes from a path like "levels\d40\d40" (parsed in pipe_protocol.cpp).
+            if (auto code = ParseMissionLoad(message)) {
+                m_mission = *code;
             }
             std::cout << "[launcher] Map: " << m_mission << "\n";
             return true;
@@ -179,12 +197,16 @@ namespace haloap {
         const std::string chapterPrefix = "CHAPTER:";
         if (message.rfind(chapterPrefix, 0) == 0)
         {
-            std::string chapterCode = message.substr(chapterPrefix.size());
+            auto chapterIdx = ParseChapter(message);
+            if (!chapterIdx) {
+                std::cerr << "[ap] malformed CHAPTER message ignored\n";
+                return true;
+            }
             if (m_mission.empty())
             {
                 std::cerr << "[ap] didn't find mission, return to menu and restart mission\n";
             }
-            chapterCode = m_mission+":"+chapterCode;
+            std::string chapterCode = m_mission + ":" + std::to_string(*chapterIdx);
             std::cout << "[ap] chapter " << chapterCode << "\n";
             
             auto& chapters = haloap::GetChapterMap();
@@ -201,9 +223,13 @@ namespace haloap {
         const std::string locationPrefix = "LOCATION_CHECKED: ";
         if (message.rfind(locationPrefix, 0) == 0)
         {
-            int64_t locationId = std::stoll(message.substr(locationPrefix.size()));
-            std::cout << "[ap] skull location checked: " << locationId << "\n";
-            SendLocation(locationId);
+            auto locationId = ParseLocationChecked(message);
+            if (!locationId) {
+                std::cerr << "[ap] malformed LOCATION_CHECKED message ignored\n";
+                return true;
+            }
+            std::cout << "[ap] skull location checked: " << *locationId << "\n";
+            SendLocation(*locationId);
             return true;
         }
         
@@ -212,29 +238,73 @@ namespace haloap {
     }
 
     void APBridge::SendLocation(int64_t locationId) {
-        if (!m_slotConnected.load()) {
-            std::cerr << "[ap] can't send location, not connected to slot\n";
-            return;
-        }
-
+        // Queue (and persist) first; the poll thread sends it once the slot is connected.
+        // Runs on the pipe thread, so it never touches m_client.
         {
-            std::lock_guard<std::mutex> lock(m_sentLocationsMutex);
-            if (!m_sentLocations.insert(locationId).second) {
-                std::cout << "[ap] location " << locationId << " already sent this session, skipping\n";
+            std::lock_guard<std::mutex> lock(m_pendingMutex);
+            if (!m_pending.Add(locationId)) {
+                std::cout << "[ap] location " << locationId << " already pending or confirmed, skipping\n";
                 return;
             }
+            if (m_pending.LastSaveFailed() && !m_saveFailureLogged.exchange(true)) {
+                std::cerr << "[ap] WARNING: could not write " << m_pending.Path()
+                          << "; unsent checks will be lost if the launcher closes before reconnecting\n";
+            }
+        }
+        m_flushRequested.store(true);
+        if (!m_slotConnected.load()) {
+            std::cout << "[ap] not connected; queued location " << locationId << " until slot connects\n";
         }
 
-        std::list<int64_t> locs = { locationId };
-        m_client->LocationChecks(locs);
-        std::cout << "[ap] sent location check: " << locationId << "\n";
-    
         // Track completion and notify DLL
         {
             std::lock_guard<std::mutex> lock(m_checkedMutex);
             m_checkedLocations.insert(locationId);
         }
         SendCompletionState();
+    }
+
+    // Poll thread only. Sends every pending location the server hasn't confirmed or been sent on this connection.
+    void APBridge::FlushPending() {
+        if (!m_slotConnected.load() || !m_client) return;
+        m_flushRequested.store(false);
+
+        std::list<int64_t> toSend;
+        {
+            std::lock_guard<std::mutex> lock(m_pendingMutex);
+            for (int64_t id : m_pending.Pending()) {
+                if (!m_inFlight.count(id)) toSend.push_back(id);
+            }
+        }
+        if (!toSend.empty()) {
+            m_client->LocationChecks(toSend);
+            for (int64_t id : toSend) {
+                m_inFlight.insert(id);
+                std::cout << "[ap] sent location check: " << id << "\n";
+            }
+        }
+        if (m_goalRequested.exchange(false)) {
+            m_client->StatusUpdate(APClient::ClientStatus::GOAL);
+        }
+    }
+
+    // Server reports locations as checked (after slot connect, and via RoomUpdate).
+    void APBridge::OnLocationChecked(const std::list<int64_t>& locations) {
+        {
+            std::lock_guard<std::mutex> lock(m_pendingMutex);
+            for (int64_t id : locations) m_pending.Confirm(id);
+        }
+        bool completionChanged = false;
+        {
+            std::lock_guard<std::mutex> lock(m_checkedMutex);
+            for (int64_t id : locations) {
+                bool isCompletion = false;
+                for (int64_t c : COMPLETION_LOCATIONS) isCompletion = isCompletion || (c == id);
+                if (m_checkedLocations.insert(id).second && isCompletion) completionChanged = true;
+            }
+        }
+        for (int64_t id : locations) m_inFlight.erase(id);
+        if (completionChanged) SendCompletionState();
     }
 
     // -------- callbacks ---------
@@ -251,6 +321,7 @@ namespace haloap {
     void APBridge::OnSocketDisconnected() {
         m_socketConnected.store(false);
         m_slotConnected.store(false);
+        m_inFlight.clear();  // anything unconfirmed gets resent after reconnect
         std::cout << "[ap] socket disconnected (will auto-reconnect)\n";
     }
 
@@ -263,7 +334,7 @@ namespace haloap {
     }
 
     void APBridge::OnSlotConnected(const nlohmann::json& slotData) {
-        m_slotConnected.store(true);
+        m_inFlight.clear();
         std::cout << "[ap] *** slot connected ***\n";
         if (!slotData.empty()) {
             std::cout << "[ap] slot data: " << slotData.dump() << "\n";
@@ -288,7 +359,28 @@ namespace haloap {
             m_skullsanityTier = slotData["skullsanity"].get<int>();
         }
         
-        
+
+        // Bind to this seed's pending file, then reconcile with the server (logic + tests in pending_checks.cpp).
+        {
+            std::lock_guard<std::mutex> lock(m_pendingMutex);
+            if (!m_stateDir.empty()) {
+                m_pending.Bind(m_stateDir + PendingFileName(m_client->get_seed(), m_slot));
+            }
+            ReconcileResult r = m_pending.Reconcile(m_client->get_checked_locations(), m_client->get_missing_locations());
+            if (r.dropped) {
+                std::cout << "[ap] dropped " << r.dropped << " queued check(s) that are not locations in this slot\n";
+            }
+            if (!r.toSend.empty()) {
+                std::cout << "[ap] " << r.toSend.size() << " unsent location check(s) to flush\n";
+            }
+            if (r.sendGoal) {
+                m_goalRequested.store(true);  // idempotent on the server, so resent on every connect
+            }
+        }
+        m_slotConnected.store(true);
+        m_flushRequested.store(true);
+        FlushPending();
+
         SendCompletionState();
     }
 

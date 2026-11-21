@@ -21,6 +21,8 @@
   <ItemGroup>
     <ClCompile Include="ap_bridge.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="pending_checks.cpp" />
+    <ClCompile Include="pipe_protocol.cpp" />
     <ClCompile Include="pipe_server.cpp" />
     <ClCompile Include="thirdparty\zlib\adler32.c" />
     <ClCompile Include="thirdparty\zlib\compress.c" />
@@ -38,6 +40,8 @@
     <ClInclude Include="ap_bridge.h" />
     <ClInclude Include="Data\chapter_map.h" />
     <ClInclude Include="Data\mission_map.h" />
+    <ClInclude Include="pending_checks.h" />
+    <ClInclude Include="pipe_protocol.h" />
     <ClInclude Include="pipe_server.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

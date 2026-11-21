@@ -7,6 +7,10 @@
 #include <mutex>
 #include <set>
 #include <cstdint>
+#include <list>
+#include <functional>
+#include <vector>
+#include "pending_checks.h"
 
 namespace haloap {
 
@@ -44,6 +48,10 @@ namespace haloap {
         
         void ReplayBufferedItems();
 
+        // Directory for the pending-checks file (same as haloap_config.txt, trailing separator).
+        // Call before Start(); empty = keep pending checks in memory only.
+        void SetStateDir(const std::string& dir) { m_stateDir = dir; }
+
     private:
         // APClient callbacks. These run on the poll thread.
         void OnSocketConnected();
@@ -71,10 +79,18 @@ namespace haloap {
         std::atomic<bool> m_slotConnected{ false };
         std::atomic<bool> m_stopped{ false };
 
-        // Locations we've sent this session, for deduplication.
-        std::mutex m_sentLocationsMutex;
-        std::set<int64_t> m_sentLocations;
-        
+        // Locations not yet confirmed by the server (persisted). Guarded by m_pendingMutex.
+        // Pipe thread only adds; the poll thread sends (m_flushRequested) and confirms.
+        std::mutex m_pendingMutex;
+        PendingChecks m_pending;
+        std::string m_stateDir;
+        std::set<int64_t> m_inFlight;  // sent on this connection, awaiting confirmation (poll thread only)
+        std::atomic<bool> m_flushRequested{ false };
+        std::atomic<bool> m_goalRequested{ false };
+        std::atomic<bool> m_saveFailureLogged{ false };
+        void FlushPending();  // poll thread only
+        void OnLocationChecked(const std::list<int64_t>& locations);
+
         std::set<int64_t> m_checkedLocations;
         std::mutex m_checkedMutex;
     };

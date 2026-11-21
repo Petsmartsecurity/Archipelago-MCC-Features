@@ -159,7 +159,6 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="hooks\chapter_title.h" />
-    <ClInclude Include="hooks\load_level_solo.h" />
     <ClInclude Include="hooks\mission_complete.h" />
     <ClInclude Include="hooks\mission_id_lookup.h" />
     <ClInclude Include="hooks\mission_load.h" />
@@ -182,7 +181,6 @@
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="hooks\chapter_title.cpp" />
-    <ClCompile Include="hooks\load_level_solo.cpp" />
     <ClCompile Include="hooks\mission_complete.cpp" />
     <ClCompile Include="hooks\mission_id_lookup.cpp" />
     <ClCompile Include="hooks\mission_load.cpp" />

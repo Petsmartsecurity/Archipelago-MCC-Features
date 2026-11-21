@@ -5,6 +5,7 @@
 #include <thread>
 #include <string>
 #include <functional>
+#include <mutex>
 
 class PipeServer {
 public:
@@ -32,4 +33,5 @@ private:
     std::atomic<bool> m_shutdown{ false };
     std::atomic<bool> m_connected{ false };
     MessageHandler m_messageHandler;
+    std::mutex m_sendMutex;  // Send is called from the pipe, poll and main threads; frames must not interleave
 };

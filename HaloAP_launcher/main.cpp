@@ -106,6 +106,11 @@ int main() {
 
 	// 2. Start the AP bridge and wait for initial connection.
 	haloap::APBridge apBridge;
+	{
+		// Pending-checks files live next to haloap_config.txt.
+		std::string cfgPath = GetConfigPath();
+		apBridge.SetStateDir(cfgPath.substr(0, cfgPath.find_last_of('\\') + 1));
+	}
 	if (!apBridge.Start(serverUri, "Halo The Master Chief Collection", slot, password)) {
 		std::cerr << "Failed to start AP bridge.\n";
 		std::cin.get();
