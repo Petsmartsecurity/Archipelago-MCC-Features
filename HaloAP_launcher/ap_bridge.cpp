@@ -238,7 +238,7 @@ namespace haloap {
                 if (ev->kill) m_telemetry->Death(m_mission, *ev);
                 else m_telemetry->Erase(m_mission, *ev);
             }
-            FeedKillTracker(*ev);  // ignores ERASE
+            FeedKillTracker(*ev);  // KILL and ERASE both count (QUESTIONS #9)
             return true;
         }
         const std::string chapterPrefix = "CHAPTER:";

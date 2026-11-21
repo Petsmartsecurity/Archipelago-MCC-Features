@@ -15,8 +15,10 @@ namespace haloap {
 
     std::vector<int64_t> KillTracker::OnEvent(const AiEvent& ev) {
         std::vector<int64_t> earned;
-        if (!m_cur || !ev.kill) return earned;
-        if (ev.ekf != 0xFF && (ev.ekf & 0x20)) return earned;  // scripted unit_kill
+        if (!m_cur) return earned;
+        // ERASE (a script despawning a hostile actor) counts as a kill, by the user's choice (QUESTIONS #9, ADR-003).
+        // A scripted unit_kill (death with unit kill flag 0x20) still does not count.
+        if (ev.kill && ev.ekf != 0xFF && (ev.ekf & 0x20)) return earned;
         bool hostile = false;
         for (const auto& s : m_cur->squads) {
             if (s.enc == ev.enc && s.sq == ev.sq) { hostile = true; break; }

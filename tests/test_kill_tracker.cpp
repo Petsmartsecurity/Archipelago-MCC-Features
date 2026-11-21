@@ -47,11 +47,11 @@ static void TestIgnored() {
     KillTracker k(Small());
     CHECK(k.OnEvent(Ev(1, 1, 0, 10)).empty());  // no mission yet
     k.OnMissionLoad("m1");
-    CHECK(k.OnEvent(Ev(1, 1, 0, 10, false)).empty());       // ERASE
     CHECK(k.OnEvent(Ev(2, 1, 0, 10, true, 0x20)).empty());  // scripted unit_kill
     CHECK(k.OnEvent(Ev(3, 1, 0, 10, true, 0x40)) == Ids{ 201 });  // silent kill (0x40) still counts
     CHECK(k.OnEvent(Ev(4, 9, 9, 11)).empty());              // non-hostile squad
     CHECK(k.OnEvent(Ev(5, -1, -1, 11)).empty());
+    CHECK(k.OnEvent(Ev(4, 9, 9, 11, false)).empty());       // ERASE in a non-hostile squad
     CHECK(k.Count() == 1);
     k.OnMissionLoad("nope");  // unknown mission -> nothing
     CHECK(k.OnEvent(Ev(6, 1, 0, 11)).empty());
@@ -68,6 +68,20 @@ static void TestDedupeAndSpecies() {
     CHECK(k.OnEvent(Ev(8, 1, 0, 10)).empty());        // second grunt: species only once
     CHECK(k.OnEvent(Ev(9, 1, 1, 11)) == (Ids{ 101, 202 }));  // 3rd kill: milestone, then first elite
     CHECK(k.OnEvent(Ev(10, 1, 1, 11)).empty());
+}
+
+// QUESTIONS #9: a script despawning a hostile actor (ERASE) counts as a kill.
+static void TestEraseCounts() {
+    KillTracker k(Small());
+    k.OnMissionLoad("m1");
+    CHECK(k.OnEvent(Ev(1, 1, 0, 11, false)) == Ids{ 202 });       // erased elite: species
+    CHECK(k.OnEvent(Ev(2, 1, 0, 12, false, 0x20)).empty());      // kill flags are ignored on ERASE: still counts
+    CHECK(k.Count() == 2);
+    CHECK(k.OnEvent(Ev(3, 1, 0, 12, false)) == Ids{ 101 });      // 3rd: milestone, from erases alone
+    CHECK(k.OnEvent(Ev(3, 1, 0, 12)).empty());                   // the same actor dying too: no double count
+    CHECK(k.OnEvent(Ev(4, 1, 0, 12)).empty());
+    CHECK(k.OnEvent(Ev(4, 1, 0, 12, false)).empty());            // ...or erased after dying
+    CHECK(k.Count() == 4);
 }
 
 static void TestVariantMatching() {
@@ -131,6 +145,7 @@ int main() {
     TestThresholds();
     TestIgnored();
     TestDedupeAndSpecies();
+    TestEraseCounts();
     TestVariantMatching();
     TestMissionSwitchAndNoRepeat();
     TestRealA10Table();

@@ -1,6 +1,7 @@
 #pragma once
 // Pure, dependency-free kill-check tracker (PLAN 5.3, ADR-001 "milestones" mode).
-// Turns the DLL's KILL events into newly earned milestone / species location IDs.
+// Turns the DLL's KILL and ERASE events into newly earned milestone / species location IDs. An ERASE (a script
+// despawning an actor) counts like a kill (QUESTIONS #9); a scripted unit_kill death does not.
 #include "pipe_protocol.h"
 
 #include <cstdint>
