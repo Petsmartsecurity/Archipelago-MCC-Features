@@ -107,9 +107,12 @@ int main() {
 	// 2. Start the AP bridge and wait for initial connection.
 	haloap::APBridge apBridge;
 	{
-		// Pending-checks files live next to haloap_config.txt.
+		// Pending-checks and telemetry files live next to haloap_config.txt.
 		std::string cfgPath = GetConfigPath();
-		apBridge.SetStateDir(cfgPath.substr(0, cfgPath.find_last_of('\\') + 1));
+		std::string buildTag;  // first word of <MCC>\build_tag.txt, recorded in the telemetry session line
+		std::ifstream tagFile(gameRoot + "\\build_tag.txt");
+		tagFile >> buildTag;
+		apBridge.SetStateDir(cfgPath.substr(0, cfgPath.find_last_of('\\') + 1), buildTag);
 	}
 	if (!apBridge.Start(serverUri, "Halo The Master Chief Collection", slot, password)) {
 		std::cerr << "Failed to start AP bridge.\n";
@@ -291,10 +294,11 @@ int main() {
 
 	// Monitor in background thread
 	std::atomic<bool> gameExited{ false };
-	std::thread monitorThread([&pipe, &gameExited]() {
+	std::thread monitorThread([&pipe, &gameExited, &apBridge]() {
 		while (pipe.IsConnected() && !gameExited.load()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		}
+		if (!pipe.IsConnected()) apBridge.NotePipeState(false);  // telemetry: a mission cut short is "untested"
 		gameExited.store(true);
 	});
 

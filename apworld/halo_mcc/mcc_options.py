@@ -20,6 +20,20 @@ class SkullSanity(Choice):
     default = 1
 
 
+class Killsanity(Choice):
+    """
+    Adds checks for killing enemies. The checks are sent the moment the kill happens.
+
+    off:        No kill checks.
+    milestones: Per-mission kill-count checks (for example 10, 25, 50 kills) and a "first kill of
+                each enemy type" check per mission. Each check is placed in its mission.
+    """
+    display_name = "Killsanity"
+    option_off = 0
+    option_milestones = 1
+    default = 0
+
+
 class SkullsRequired(Range):
     """
     How many scoring skulls need to be disabled before mission completion is in logic
@@ -62,6 +76,7 @@ class CeFinalMission(Choice):
 @dataclass
 class MCCOptions(PerGameCommonOptions):
     skullsanity: SkullSanity
+    killsanity: Killsanity
     skulls_required: SkullsRequired
     # powerups: Powerups
     ce_enabled: CeEnabled

@@ -1,6 +1,8 @@
 // Plain C++ tests for pipe_protocol and pending_checks. No framework; exit code != 0 on failure.
 #include "pipe_protocol.h"
 #include "pending_checks.h"
+#include "telemetry_log.h"
+#include "shared/ai_event_format.h"
 
 #include <chrono>
 #include <cstdio>
@@ -200,7 +202,141 @@ static void TestReconcile() {
     std::filesystem::remove(seedB);
 }
 
+static void TestAiEvent() {
+    auto k = ParseAiEvent("KILL: ah=0xe1a40021 unit=0xffffffff enc=12 sq=3 pl=-1 var=0xe1a40021 fl=0x00 ekf=0x20 "
+        "living=0 total=4 el=0 et=9 tid=8812");
+    CHECK(k && k->kill && k->ah == 0xe1a40021u && k->unit == 0xffffffffu && k->enc == 12 && k->sq == 3 && k->pl == -1
+        && k->var == 0xe1a40021u && k->flags == 0 && k->ekf == 0x20 && k->living == 0 && k->total == 4
+        && k->el == 0 && k->et == 9 && k->tid == 8812u);
+    auto e = ParseAiEvent("ERASE: ah=0x1 unit=0x2 enc=-1 sq=-1 pl=65535 var=0x00000001 fl=0xff ekf=0x60 living=-1 "
+        "total=32767 el=-1 et=-1 tid=0");
+    CHECK(e && !e->kill && e->enc == -1 && e->pl == 65535 && e->flags == 0xff && e->ekf == 0x60 && e->living == -1
+        && e->total == 32767 && e->el == -1 && e->et == -1 && e->tid == 0);
+    const std::string ok = "ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0x00 living=1 total=2 el=1 et=2 tid=5";
+    CHECK(ParseAiEvent("KILL: " + ok));
+    CHECK(!ParseAiEvent(""));
+    CHECK(!ParseAiEvent("DEATH: " + ok));
+    CHECK(!ParseAiEvent("KILL:" + ok));
+    // drop one key at a time -> every key is required
+    for (const char* key : { "ah", "unit", "enc", "sq", "pl", "var", "fl", "ekf", "living", "total", "el", "et", "tid" }) {
+        std::string msg = "KILL:";
+        size_t pos = 0;
+        while (pos < ok.size()) {
+            size_t sp = ok.find(' ', pos);
+            std::string tok = ok.substr(pos, sp == std::string::npos ? std::string::npos : sp - pos);
+            if (tok.rfind(std::string(key) + "=", 0) != 0) msg += " " + tok;
+            if (sp == std::string::npos) break;
+            pos = sp + 1;
+        }
+        CHECK(!ParseAiEvent(msg));
+    }
+    CHECK(!ParseAiEvent("KILL: " + ok + " tid=6"));                                             // duplicate
+    CHECK(!ParseAiEvent("KILL: " + ok + " extra=1"));                                           // extra key
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=x sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0xzz fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=-1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1ffffffff unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=-2 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=65536 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x100 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0x100 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=32768 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=-2 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=32768 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=-1"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1  unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+    CHECK(!ParseAiEvent("KILL: ah=0x1 unit=0x2 enc=99999999999999999999 sq=2 pl=3 var=0x10 fl=0x01 ekf=0 living=1 total=2 el=1 et=2 tid=5"));
+
+    // m5: the DLL's snprintf format must round-trip through the parser.
+    char buf[256];
+    std::snprintf(buf, sizeof buf, haloap::kAiEventFormat, "KILL", 0xe1a40021u, 0xffffffffu, 4, 2, -1, 0x1234abcdu,
+        0x01u, 0x20u, 0, 3, 0, 7, 99ul);
+    auto rt = ParseAiEvent(buf);
+    CHECK(rt && rt->kill && rt->ah == 0xe1a40021u && rt->unit == 0xffffffffu && rt->enc == 4 && rt->sq == 2
+        && rt->pl == -1 && rt->var == 0x1234abcdu && rt->flags == 1 && rt->ekf == 0x20 && rt->living == 0
+        && rt->total == 3 && rt->el == 0 && rt->et == 7 && rt->tid == 99u);
+    std::snprintf(buf, sizeof buf, haloap::kAiEventFormat, "ERASE", 0u, 0u, -1, -1, -1, 0u, 0u, 0u, -1, -1, -1, -1, 0ul);
+    auto rt2 = ParseAiEvent(buf);
+    CHECK(rt2 && !rt2->kill && rt2->enc == -1 && rt2->el == -1);
+}
+
+static std::string ReadAll(const std::filesystem::path& p) {
+    std::ifstream f(p, std::ios::binary);
+    return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+}
+
+// Replaces the digits after "\"t\":" with N so output is comparable exactly.
+static std::string NormT(const std::string& s) {
+    std::string out;
+    size_t i = 0;
+    const std::string key = "\"t\":";
+    while (i < s.size()) {
+        if (s.compare(i, key.size(), key) == 0) {
+            out += key + "N";
+            i += key.size();
+            while (i < s.size() && s[i] >= '0' && s[i] <= '9') ++i;
+        } else out += s[i++];
+    }
+    return out;
+}
+
+static void TestTelemetry() {
+    namespace fs = std::filesystem;
+    fs::path dir = fs::temp_directory_path() / ("haloap_tlm_" + std::to_string(
+        std::chrono::steady_clock::now().time_since_epoch().count()));
+    fs::create_directories(dir);
+    std::string d = dir.string() + "/";
+    {
+        TelemetryLog log(d, "build1", "0.1");
+        CHECK(log.Path().empty());  // lazy
+        CHECK(fs::is_empty(dir));
+        log.Rejected();  // before the first mission_load: reset by MissionLoad
+        log.MissionLoad("a10");
+        log.Pipe(true);
+        auto k = ParseAiEvent("KILL: ah=0xe1a40021 unit=0x00010002 enc=12 sq=3 pl=-1 var=0xe1a40021 fl=0x01 ekf=0x20 "
+            "living=0 total=4 el=0 et=9 tid=8812");
+        auto e = ParseAiEvent("ERASE: ah=0x5 unit=0xffffffff enc=-1 sq=-1 pl=7 var=0x00000005 fl=0x00 ekf=0x00 "
+            "living=-1 total=-1 el=-1 et=-1 tid=1");
+        CHECK(k && e);
+        log.Death("a10", *k);
+        log.Erase("we\"ird\\", *e);
+        log.Rejected();
+        log.Rejected();
+        log.Pipe(false);
+        log.MissionEnd("a10", "won");
+        log.MissionLoad("a30");
+        std::string got = NormT(ReadAll(log.Path()));
+        std::string want =
+            "{\"ev\":\"session\",\"t\":N,\"gen\":0,\"build\":\"build1\",\"launcher\":\"0.1\"}\n"
+            "{\"ev\":\"mission_load\",\"t\":N,\"gen\":1,\"mission\":\"a10\"}\n"
+            "{\"ev\":\"pipe\",\"t\":N,\"gen\":1,\"state\":\"connected\"}\n"
+            "{\"ev\":\"death\",\"t\":N,\"gen\":1,\"mission\":\"a10\",\"enc\":12,\"sq\":3,\"pl\":-1,\"variant\":33,\"swarm\":true,"
+            "\"var_handle\":\"0xe1a40021\",\"ah\":\"0xe1a40021\",\"unit\":\"0x00010002\",\"ekf\":\"0x20\",\"el\":0,\"et\":9,"
+            "\"tid\":8812}\n"
+            "{\"ev\":\"squad\",\"t\":N,\"gen\":1,\"mission\":\"a10\",\"enc\":12,\"sq\":3,\"living\":0,\"spawned\":4}\n"
+            "{\"ev\":\"erase\",\"t\":N,\"gen\":1,\"mission\":\"we\\\"ird\\\\\",\"enc\":-1,\"sq\":-1,\"pl\":7,\"variant\":5,\"swarm\":false,"
+            "\"var_handle\":\"0x00000005\",\"ah\":\"0x00000005\",\"unit\":\"0xffffffff\",\"ekf\":\"0x00\",\"el\":-1,\"et\":-1,"
+            "\"tid\":1}\n"
+            "{\"ev\":\"squad\",\"t\":N,\"gen\":1,\"mission\":\"we\\\"ird\\\\\",\"enc\":-1,\"sq\":-1,\"living\":-1,\"spawned\":-1}\n"
+            "{\"ev\":\"pipe\",\"t\":N,\"gen\":1,\"state\":\"disconnected\"}\n"
+            "{\"ev\":\"mission_end\",\"t\":N,\"gen\":1,\"mission\":\"a10\",\"reason\":\"won\",\"rejected\":2}\n"
+            "{\"ev\":\"mission_load\",\"t\":N,\"gen\":2,\"mission\":\"a30\"}\n";
+        CHECK(got == want);
+        if (got != want) std::printf("got:\n%s\n", got.c_str());
+    }
+    CHECK(JsonString(std::string("a\tb\x01")) == "\"a\\tb\\u0001\"");
+    {   // unopenable directory: no throw, no file
+        TelemetryLog bad(d + "no_such_dir/");
+        bad.MissionLoad("a10");
+        CHECK(bad.Path().empty());
+    }
+    std::error_code ec;
+    fs::remove_all(dir, ec);
+}
+
 int main() {
+    TestAiEvent();
+    TestTelemetry();
     TestReconcile();
     TestLocationChecked();
     TestMissionComplete();

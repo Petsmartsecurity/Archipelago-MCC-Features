@@ -143,6 +143,7 @@ namespace haloap {
 
     void APBridge::Stop() {
         if (m_stopped.exchange(true)) return;
+        NotePipeState(false);
         m_client.reset();
         m_socketConnected.store(false);
         m_slotConnected.store(false);
@@ -157,6 +158,8 @@ namespace haloap {
                 return true;
             }
             const std::string& missionCode = *parsedCode;
+            if (m_telemetry) m_telemetry->MissionEnd(missionCode, "won");
+            m_mission.clear();  // events until the next valid MISSION_LOAD have no mission
             const auto& map = GetMissionIdMap();
             auto it = map.find(missionCode);
             if (it == map.end()) {
@@ -184,14 +187,37 @@ namespace haloap {
         
             return true;
         }
+        if (message.rfind("HELLO", 0) == 0) {
+            // The DLL sends HELLO once when its pipe connects; a second HELLO means it reconnected.
+            NotePipeState(true);
+            return false;  // keep existing "not handled" behaviour for HELLO
+        }
         const std::string missionPrefix = "MISSION_LOAD: ";
         if (message.rfind(missionPrefix, 0) == 0)
         {
             // Mission code comes from a path like "levels\d40\d40" (parsed in pipe_protocol.cpp).
             if (auto code = ParseMissionLoad(message)) {
                 m_mission = *code;
+                if (m_telemetry) m_telemetry->MissionLoad(m_mission);
+            } else {
+                m_mission.clear();  // don't tag later events with the previous mission
             }
             std::cout << "[launcher] Map: " << m_mission << "\n";
+            return true;
+        }
+        if (message.rfind("KILL: ", 0) == 0 || message.rfind("ERASE: ", 0) == 0)
+        {
+            // Telemetry only; no AP checks until Phase 5.
+            auto ev = ParseAiEvent(message);
+            if (!ev) {
+                if (m_telemetry) m_telemetry->Rejected();
+                std::cerr << "[ap] malformed KILL/ERASE message ignored\n";
+                return true;
+            }
+            if (m_telemetry) {
+                if (ev->kill) m_telemetry->Death(m_mission, *ev);
+                else m_telemetry->Erase(m_mission, *ev);
+            }
             return true;
         }
         const std::string chapterPrefix = "CHAPTER:";

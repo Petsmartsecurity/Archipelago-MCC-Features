@@ -25,4 +25,20 @@ namespace haloap {
     // "CHAPTER:<n>" -> n in [0, 999].
     std::optional<int> ParseChapter(std::string_view message);
 
+    // "KILL: ah=0x<hex> unit=0x<hex> enc=<int> sq=<int> pl=<int> var=0x<hex> fl=0x<hex> ekf=0x<hex> living=<int>
+    //  total=<int> el=<int> et=<int> tid=<uint>" (or "ERASE: ..."); see shared/ai_event_format.h.
+    // All keys required exactly once, in any order.
+    struct AiEvent {
+        bool kill;  // true = KILL, false = ERASE
+        uint32_t ah, unit;  // actor / unit handles (0xffffffff possible)
+        int enc, sq, pl;  // -1 = none/unknown, else 0..65535
+        uint32_t var;
+        uint32_t flags;  // actor flags byte
+        uint32_t ekf;  // unit kill flags (obj+0xF6 & 0x60), 0..0xFF
+        int living, total;  // squad counters: -1 = unreadable, else 0..32767
+        int el, et;  // encounter living/total: -1 = unreadable, else 0..32767
+        uint32_t tid;
+    };
+    std::optional<AiEvent> ParseAiEvent(std::string_view message);
+
 }  // namespace haloap

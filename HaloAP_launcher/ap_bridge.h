@@ -11,6 +11,7 @@
 #include <functional>
 #include <vector>
 #include "pending_checks.h"
+#include "telemetry_log.h"
 
 namespace haloap {
 
@@ -50,7 +51,23 @@ namespace haloap {
 
         // Directory for the pending-checks file (same as haloap_config.txt, trailing separator).
         // Call before Start(); empty = keep pending checks in memory only.
-        void SetStateDir(const std::string& dir) { m_stateDir = dir; }
+        // Also the directory for haloap_telemetry_*.jsonl (always on in this build).
+        // `buildTag` = first word of the MCC install's build_tag.txt (empty if unknown); goes in the telemetry `session` line.
+        void SetStateDir(const std::string& dir, const std::string& buildTag = "") {
+            m_stateDir = dir;
+            m_telemetry = std::make_unique<TelemetryLog>(dir, buildTag);
+        }
+
+        // DLL pipe state for telemetry `pipe` lines. "connected" is emitted automatically on the DLL's HELLO message;
+        // call NotePipeState(false) when the pipe drops (also done by Stop()). Repeated identical states are ignored,
+        // and a HELLO while already connected logs disconnected then connected.
+        void NotePipeState(bool connected) {
+            bool was = m_pipeUp.exchange(connected);  // atomic: called from the pipe and monitor threads (QA n1)
+            if (!m_telemetry) return;
+            if (!connected && !was) return;           // already down
+            if (connected && was) m_telemetry->Pipe(false);  // a second HELLO: the DLL reconnected
+            m_telemetry->Pipe(connected);
+        }
 
     private:
         // APClient callbacks. These run on the poll thread.
@@ -84,6 +101,8 @@ namespace haloap {
         std::mutex m_pendingMutex;
         PendingChecks m_pending;
         std::string m_stateDir;
+        std::atomic<bool> m_pipeUp{ false };
+        std::unique_ptr<TelemetryLog> m_telemetry;  // set by SetStateDir; internally locked
         std::set<int64_t> m_inFlight;  // sent on this connection, awaiting confirmation (poll thread only)
         std::atomic<bool> m_flushRequested{ false };
         std::atomic<bool> m_goalRequested{ false };

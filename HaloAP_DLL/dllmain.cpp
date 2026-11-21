@@ -16,6 +16,7 @@
 #include "hooks/mission_select_block.h"
 #include "hooks/chapter_title.h"
 #include "hooks/skull_hook.h"
+#include "hooks/kill_hook.h"
 
 
 #pragma comment(lib, "psapi.lib")
@@ -65,6 +66,10 @@ namespace
         haloap::InstallMissionLoadHook(g_pipe);
         haloap::InstallChapterTitleHook(g_pipe);
         haloap::InstallSkullHook(g_pipe);
+        if (!haloap::InstallKillHook(g_pipe))
+        {
+            printf("Kill hook not installed: kill events (telemetry / killsanity) are off this session.\n");
+        }
     }
 
     void UninstallHalo1Hooks()
@@ -74,6 +79,7 @@ namespace
         haloap::UninstallMissionIdLookupHook();
         haloap::UninstallChapterTitleHook();
         haloap::UninstallSkullHook();
+        haloap::UninstallKillHook();
     }
 
     void UninstallVtableHooks()
@@ -511,6 +517,9 @@ namespace
 
         printf("Worker shutting down.\n");
 
+        // Remove hooks before freeing the pipe: a game thread inside a detour must not reach a deleted PipeClient.
+        UninstallAllHooks();
+
         if (g_pipe)
         {
             g_pipe->Stop();
@@ -518,7 +527,6 @@ namespace
             g_pipe = nullptr;
         }
 
-        UninstallAllHooks();
         MH_Uninitialize();
         TeardownConsole();
         return 0;

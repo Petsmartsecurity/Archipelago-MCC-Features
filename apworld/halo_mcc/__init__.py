@@ -53,4 +53,5 @@ class MCCWorld(World):
         return {
             "final_mission": self.final_mission,
             "skullsanity": self.options.skullsanity.value,
+            "killsanity": self.options.killsanity.value,
         }
