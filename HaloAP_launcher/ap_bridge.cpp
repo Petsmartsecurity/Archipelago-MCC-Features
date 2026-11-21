@@ -2,6 +2,7 @@
 #include "data/mission_map.h"
 #include "data/chapter_map.h"
 #include "shared/common.h"
+#include "data/kill_map.h"
 #include "pipe_protocol.h"
 #include <atomic>
 #include <iostream>
@@ -67,7 +68,18 @@ namespace haloap {
         std::cout << "[ap] Sent final mission: " << m_finalMission << "\n";
     }
 
-    APBridge::APBridge() = default;
+    APBridge::APBridge() : m_killTracker(std::make_unique<KillTracker>(GetKillTables())) {}
+
+    // Pipe thread. Feeds the tracker and sends what it earns (if killsanity is known to be on).
+    void APBridge::FeedKillTracker(const AiEvent& ev) {
+        std::lock_guard<std::mutex> lock(m_killMutex);
+        for (int64_t id : m_killTracker->OnEvent(ev)) {
+            m_killEarned.push_back(id);
+            std::cout << "[ap] kill check earned: " << id << " (" << m_mission << ", " << m_killTracker->Count()
+                      << " kills)" << (m_killsanity >= 1 ? "\n" : " (held; killsanity not on/known yet)\n");
+            if (m_killsanity >= 1) SendLocation(id);  // only queues + persists; safe from the pipe thread
+        }
+    }
 
     APBridge::~APBridge() {
         Stop();
@@ -160,6 +172,10 @@ namespace haloap {
             const std::string& missionCode = *parsedCode;
             if (m_telemetry) m_telemetry->MissionEnd(missionCode, "won");
             m_mission.clear();  // events until the next valid MISSION_LOAD have no mission
+            {
+                std::lock_guard<std::mutex> lock(m_killMutex);
+                m_killTracker->OnMissionLoad("");
+            }
             const auto& map = GetMissionIdMap();
             auto it = map.find(missionCode);
             if (it == map.end()) {
@@ -202,12 +218,16 @@ namespace haloap {
             } else {
                 m_mission.clear();  // don't tag later events with the previous mission
             }
+            {
+                std::lock_guard<std::mutex> lock(m_killMutex);
+                m_killTracker->OnMissionLoad(m_mission);  // new run: per-run kill count resets
+            }
             std::cout << "[launcher] Map: " << m_mission << "\n";
             return true;
         }
         if (message.rfind("KILL: ", 0) == 0 || message.rfind("ERASE: ", 0) == 0)
         {
-            // Telemetry only; no AP checks until Phase 5.
+            // Telemetry always; AP checks only via the kill tracker when killsanity >= 1.
             auto ev = ParseAiEvent(message);
             if (!ev) {
                 if (m_telemetry) m_telemetry->Rejected();
@@ -218,6 +238,7 @@ namespace haloap {
                 if (ev->kill) m_telemetry->Death(m_mission, *ev);
                 else m_telemetry->Erase(m_mission, *ev);
             }
+            FeedKillTracker(*ev);  // ignores ERASE
             return true;
         }
         const std::string chapterPrefix = "CHAPTER:";
@@ -384,7 +405,6 @@ namespace haloap {
         {
             m_skullsanityTier = slotData["skullsanity"].get<int>();
         }
-        
 
         // Bind to this seed's pending file, then reconcile with the server (logic + tests in pending_checks.cpp).
         {
@@ -401,6 +421,20 @@ namespace haloap {
             }
             if (r.sendGoal) {
                 m_goalRequested.store(true);  // idempotent on the server, so resent on every connect
+            }
+        }
+        // Killsanity from slot data (after Bind so queued kill checks land in this seed's pending file).
+        {
+            int ks = 0;
+            if (slotData.contains("killsanity") && slotData["killsanity"].is_number_integer()) {
+                ks = slotData["killsanity"].get<int>();
+            }
+            std::lock_guard<std::mutex> lock(m_killMutex);
+            m_killsanity = ks;
+            std::cout << "[ap] killsanity = " << ks << "\n";
+            if (ks >= 1) {
+                // Kills made before the slot connected (or before this data arrived) are sent now.
+                for (int64_t id : m_killEarned) SendLocation(id);
             }
         }
         m_slotConnected.store(true);

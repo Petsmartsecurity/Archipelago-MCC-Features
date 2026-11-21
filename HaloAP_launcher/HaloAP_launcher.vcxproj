@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="ap_bridge.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="kill_tracker.cpp" />
     <ClCompile Include="pending_checks.cpp" />
     <ClCompile Include="telemetry_log.cpp" />
     <ClCompile Include="pipe_protocol.cpp" />
@@ -41,6 +42,8 @@
     <ClInclude Include="ap_bridge.h" />
     <ClInclude Include="Data\chapter_map.h" />
     <ClInclude Include="Data\mission_map.h" />
+    <ClInclude Include="Data\kill_map.h" />
+    <ClInclude Include="kill_tracker.h" />
     <ClInclude Include="pending_checks.h" />
     <ClInclude Include="telemetry_log.h" />
     <ClInclude Include="pipe_protocol.h" />

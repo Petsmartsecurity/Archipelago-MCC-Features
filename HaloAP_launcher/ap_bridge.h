@@ -12,6 +12,7 @@
 #include <vector>
 #include "pending_checks.h"
 #include "telemetry_log.h"
+#include "kill_tracker.h"
 
 namespace haloap {
 
@@ -112,6 +113,16 @@ namespace haloap {
 
         std::set<int64_t> m_checkedLocations;
         std::mutex m_checkedMutex;
+
+        // Killsanity (milestones/species). The tracker always runs, so kills before the slot connects are not
+        // lost; IDs are only sent once slot data says killsanity >= 1 (m_killsanity: 0 = off or not yet known).
+        // On connect with killsanity >= 1, everything earned so far is sent. SendLocation de-dups and persists.
+        // Guarded by m_killMutex (pipe thread feeds events, poll thread sets killsanity).
+        std::mutex m_killMutex;
+        std::unique_ptr<KillTracker> m_killTracker;
+        std::vector<int64_t> m_killEarned;
+        int m_killsanity{ 0 };
+        void FeedKillTracker(const AiEvent& ev);
     };
 
 }  // namespace haloap
