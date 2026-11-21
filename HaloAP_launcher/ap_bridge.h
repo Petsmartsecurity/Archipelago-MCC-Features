@@ -39,7 +39,8 @@ namespace haloap {
         bool HandleDllMessage(const std::string& message);
 
         // Convenience: send a location check. Deduplicates within this session.
-        void SendLocation(int64_t locationId);
+        // notifyDll = false skips the completion-state push to the DLL (kill checks don't change it).
+        void SendLocation(int64_t locationId, bool notifyDll = true);
 
         bool IsConnected() const { return m_slotConnected.load(); }
         bool IsSocketConnected() const { return m_socketConnected.load(); }
@@ -114,15 +115,22 @@ namespace haloap {
         std::set<int64_t> m_checkedLocations;
         std::mutex m_checkedMutex;
 
-        // Killsanity (milestones/species). The tracker always runs, so kills before the slot connects are not
-        // lost; IDs are only sent once slot data says killsanity >= 1 (m_killsanity: 0 = off or not yet known).
-        // On connect with killsanity >= 1, everything earned so far is sent. SendLocation de-dups and persists.
-        // Guarded by m_killMutex (pipe thread feeds events, poll thread sets killsanity).
+        // Kill checks (ADR-001 Amendment A). Thread rules:
+        //  - pipe thread: HandleDllMessage -> FeedKillTracker (KillTracker::OnEvent) and OnMissionLoad. It never
+        //    touches m_client; SendLocation only queues + persists under m_pendingMutex.
+        //  - poll thread: OnSlotConnected reads m_client (checked/missing locations, slot_data), then under
+        //    m_killMutex stores the slot locations, calls KillTracker::SetConfig and sends what that returns.
+        //  - Every use of m_killTracker, m_slotLocations happens under m_killMutex (lock order: m_killMutex, then
+        //    m_pendingMutex inside SendLocation; never the reverse).
+        // The tracker always tracks counts/species, so kills before the slot connects are not lost; it emits
+        // nothing until SetConfig. Emitted IDs are sent only if they are slot locations (the server's checked +
+        // missing sets): a milestone above this seed's kill_milestone_max_percent cap is not one.
         std::mutex m_killMutex;
         std::unique_ptr<KillTracker> m_killTracker;
-        std::vector<int64_t> m_killEarned;
-        int m_killsanity{ 0 };
+        std::set<int64_t> m_slotLocations;  // server checked + missing; empty until the slot connects
+        std::string m_lastSeed;             // seed of the last slot connect (kill history resets on a change)
         void FeedKillTracker(const AiEvent& ev);
+        void SendKillChecks(const std::vector<int64_t>& earned);  // caller holds m_killMutex
     };
 
 }  // namespace haloap

@@ -70,15 +70,27 @@ namespace haloap {
 
     APBridge::APBridge() : m_killTracker(std::make_unique<KillTracker>(GetKillTables())) {}
 
-    // Pipe thread. Feeds the tracker and sends what it earns (if killsanity is known to be on).
+    // Caller holds m_killMutex. Sends the earned IDs that are locations of this slot; the rest (e.g. a milestone
+    // above the seed's cap) are dropped. SendLocation only queues + persists, so it is safe from either thread.
+    // Already-checked IDs (a reconnect re-emits everything earned) are skipped silently (QA 5.4 m3). Kill IDs never
+    // change mission/skull completion, so the DLL isn't re-notified per ID. Logs no mission name: m_mission belongs
+    // to the pipe thread and this also runs on the poll thread (QA 5.4 m1).
+    void APBridge::SendKillChecks(const std::vector<int64_t>& earned) {
+        for (int64_t id : earned) {
+            if (m_slotLocations.count(id) == 0) continue;  // e.g. a milestone above this seed's cap
+            {
+                std::lock_guard<std::mutex> lock(m_checkedMutex);  // order: m_killMutex -> m_checkedMutex
+                if (m_checkedLocations.count(id)) continue;
+            }
+            std::cout << "[ap] kill check earned: " << id << "\n";
+            SendLocation(id, /*notifyDll=*/false);
+        }
+    }
+
+    // Pipe thread. Feeds the tracker; it emits nothing until the slot options are known (SetConfig on connect).
     void APBridge::FeedKillTracker(const AiEvent& ev) {
         std::lock_guard<std::mutex> lock(m_killMutex);
-        for (int64_t id : m_killTracker->OnEvent(ev)) {
-            m_killEarned.push_back(id);
-            std::cout << "[ap] kill check earned: " << id << " (" << m_mission << ", " << m_killTracker->Count()
-                      << " kills)" << (m_killsanity >= 1 ? "\n" : " (held; killsanity not on/known yet)\n");
-            if (m_killsanity >= 1) SendLocation(id);  // only queues + persists; safe from the pipe thread
-        }
+        SendKillChecks(m_killTracker->OnEvent(ev));
     }
 
     APBridge::~APBridge() {
@@ -227,7 +239,7 @@ namespace haloap {
         }
         if (message.rfind("KILL: ", 0) == 0 || message.rfind("ERASE: ", 0) == 0)
         {
-            // Telemetry always; AP checks only via the kill tracker when killsanity >= 1.
+            // Telemetry always; AP checks only via the kill tracker, once the slot's kill options are known.
             auto ev = ParseAiEvent(message);
             if (!ev) {
                 if (m_telemetry) m_telemetry->Rejected();
@@ -284,7 +296,7 @@ namespace haloap {
         return false;
     }
 
-    void APBridge::SendLocation(int64_t locationId) {
+    void APBridge::SendLocation(int64_t locationId, bool notifyDll) {
         // Queue (and persist) first; the poll thread sends it once the slot is connected.
         // Runs on the pipe thread, so it never touches m_client.
         {
@@ -308,7 +320,7 @@ namespace haloap {
             std::lock_guard<std::mutex> lock(m_checkedMutex);
             m_checkedLocations.insert(locationId);
         }
-        SendCompletionState();
+        if (notifyDll) SendCompletionState();
     }
 
     // Poll thread only. Sends every pending location the server hasn't confirmed or been sent on this connection.
@@ -423,19 +435,29 @@ namespace haloap {
                 m_goalRequested.store(true);  // idempotent on the server, so resent on every connect
             }
         }
-        // Killsanity from slot data (after Bind so queued kill checks land in this seed's pending file).
+        // Kill options from slot data (after Bind so queued kill checks land in this seed's pending file).
+        // Missing keys = 0 / off (a seed from an older apworld has no kill checks).
         {
-            int ks = 0;
-            if (slotData.contains("killsanity") && slotData["killsanity"].is_number_integer()) {
-                ks = slotData["killsanity"].get<int>();
+            int interval = 0;
+            bool speciesOn = false;
+            if (slotData.contains("kill_milestone_interval") && slotData["kill_milestone_interval"].is_number_integer()) {
+                interval = slotData["kill_milestone_interval"].get<int>();
             }
+            if (slotData.contains("kill_species_checks") && slotData["kill_species_checks"].is_number_integer()) {
+                speciesOn = slotData["kill_species_checks"].get<int>() != 0;
+            }
+            std::set<int64_t> slotLocs = m_client->get_checked_locations();  // poll thread: m_client is ours
+            for (int64_t id : m_client->get_missing_locations()) slotLocs.insert(id);
+            std::string seed = m_client->get_seed();
             std::lock_guard<std::mutex> lock(m_killMutex);
-            m_killsanity = ks;
-            std::cout << "[ap] killsanity = " << ks << "\n";
-            if (ks >= 1) {
-                // Kills made before the slot connected (or before this data arrived) are sent now.
-                for (int64_t id : m_killEarned) SendLocation(id);
-            }
+            // A different seed than the last connect: kills made for the old seed are not credited to the new one
+            // (QA 5.4 m2). Kills made before the first connect still count for that first seed.
+            if (!m_lastSeed.empty() && seed != m_lastSeed) m_killTracker->ResetHistory();
+            m_lastSeed = seed;
+            m_slotLocations = std::move(slotLocs);
+            std::cout << "[ap] kill_milestone_interval = " << interval << ", kill_species_checks = " << speciesOn << "\n";
+            // Everything earned so far under these settings (kills before the slot connected) is sent now.
+            SendKillChecks(m_killTracker->SetConfig(interval, speciesOn));
         }
         m_slotConnected.store(true);
         m_flushRequested.store(true);

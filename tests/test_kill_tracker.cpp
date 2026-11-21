@@ -2,6 +2,7 @@
 #include "kill_tracker.h"
 #include "data/kill_map.h"
 
+#include <algorithm>
 #include <cstdio>
 
 using namespace haloap;
@@ -23,32 +24,82 @@ static AiEvent Ev(uint32_t ah, int enc, int sq, int variant, bool kill = true, u
 
 static KillTables Small() {
     KillTables t;
-    t["m1"] = { { {1, 0}, {1, 1}, {2, 0} },
-                { {3, 101}, {5, 102} },
+    t["m1"] = { 1, { {1, 0}, {1, 1}, {2, 0} },
                 { {"grunt", 201}, {"elite", 202} },
                 { {10, "grunt"}, {11, "elite"}, {12, "warthog"} } };
-    t["m2"] = { { {1, 0} }, { {2, 301} }, { {"grunt", 302} }, { {10, "grunt"} } };
+    t["m2"] = { 2, { {1, 0} }, { {"grunt", 302} }, { {10, "grunt"} } };
     return t;
 }
 
-static void TestThresholds() {
+// Feeds `n` fresh hostile kills (variant 99: no species) and returns every ID emitted.
+static Ids Feed(KillTracker& k, uint32_t firstHandle, int n, int variant = 99) {
+    Ids all;
+    for (int i = 0; i < n; ++i) {
+        for (int64_t id : k.OnEvent(Ev(firstHandle + i, 1, 0, variant))) all.push_back(id);
+    }
+    return all;
+}
+
+static void TestIdFormula() {
+    CHECK(MilestoneId(1, 25) == 1000000000LL + 10000000LL + 101LL * 10000 + 25);
+    CHECK(MilestoneId(10, 9999) == 1000000000LL + 10000000LL + 110LL * 10000 + 9999);
+    CHECK(MilestoneId(10, 9999) < 2147483647LL);
+}
+
+static void TestIntervalMilestones() {
     KillTracker k(Small());
+    k.SetConfig(25, false);
     k.OnMissionLoad("m1");
-    CHECK(k.OnEvent(Ev(1, 1, 0, 12)).empty());
-    CHECK(k.OnEvent(Ev(2, 1, 1, 12)).empty());
-    CHECK(k.OnEvent(Ev(3, 2, 0, 12)) == Ids{ 101 });
-    CHECK(k.OnEvent(Ev(4, 2, 0, 12)).empty());
-    CHECK(k.OnEvent(Ev(5, 2, 0, 12)) == Ids{ 102 });
-    CHECK(k.OnEvent(Ev(6, 2, 0, 12)).empty());
+    Ids got = Feed(k, 1, 60);
+    CHECK((got == Ids{ MilestoneId(1, 25), MilestoneId(1, 50) }));
+    CHECK(k.Count() == 60);
+    CHECK(Feed(k, 100, 15) == Ids{ MilestoneId(1, 75) });
+}
+
+static void TestIntervalOneAndNone() {
+    KillTracker k(Small());
+    k.SetConfig(1, false);
+    k.OnMissionLoad("m1");
+    CHECK((Feed(k, 1, 3) == Ids{ MilestoneId(1, 1), MilestoneId(1, 2), MilestoneId(1, 3) }));
+    KillTracker z(Small());
+    z.SetConfig(0, false);
+    z.OnMissionLoad("m1");
+    CHECK(Feed(z, 1, 80).empty());
+    KillTracker d(Small());  // defaults (no SetConfig): nothing emitted either
+    d.OnMissionLoad("m1");
+    CHECK(Feed(d, 1, 80).empty());
+    KillTracker c(Small());  // out-of-range interval is clamped to 100
+    c.SetConfig(500, false);
+    c.OnMissionLoad("m1");
+    CHECK(Feed(c, 1, 100) == Ids{ MilestoneId(1, 100) });
+}
+
+static void TestSpeciesToggle() {
+    KillTracker off(Small());
+    off.SetConfig(0, false);
+    off.OnMissionLoad("m1");
+    CHECK(off.OnEvent(Ev(1, 1, 0, 10)).empty());  // species off: nothing
+    KillTracker k(Small());
+    k.SetConfig(0, true);
+    k.OnMissionLoad("m1");
+    CHECK(k.OnEvent(Ev(1, 1, 0, 10)) == Ids{ 201 });
+    CHECK(k.OnEvent(Ev(2, 1, 0, 10)).empty());       // second grunt: species only once
+    CHECK(k.OnEvent(Ev(3, 1, 1, 11)) == Ids{ 202 });
+    CHECK(k.OnEvent(Ev(4, 1, 1, 12)).empty());       // warthog variant has no species location
+    CHECK(k.OnEvent(Ev(5, 1, 1, 99)).empty());       // unknown variant still counts as a kill, no species
+    AiEvent hi = Ev(6, 2, 0, 10);
+    hi.var = 0x1234000Bu;                            // only the low 16 bits are the tag index
+    CHECK(k.OnEvent(hi).empty());                    // elite again
     CHECK(k.Count() == 6);
 }
 
 static void TestIgnored() {
     KillTracker k(Small());
+    k.SetConfig(1, true);
     CHECK(k.OnEvent(Ev(1, 1, 0, 10)).empty());  // no mission yet
     k.OnMissionLoad("m1");
     CHECK(k.OnEvent(Ev(2, 1, 0, 10, true, 0x20)).empty());  // scripted unit_kill
-    CHECK(k.OnEvent(Ev(3, 1, 0, 10, true, 0x40)) == Ids{ 201 });  // silent kill (0x40) still counts
+    CHECK((k.OnEvent(Ev(3, 1, 0, 10, true, 0x40)) == Ids{ MilestoneId(1, 1), 201 }));  // silent kill (0x40) counts
     CHECK(k.OnEvent(Ev(4, 9, 9, 11)).empty());              // non-hostile squad
     CHECK(k.OnEvent(Ev(5, -1, -1, 11)).empty());
     CHECK(k.OnEvent(Ev(4, 9, 9, 11, false)).empty());       // ERASE in a non-hostile squad
@@ -59,62 +110,81 @@ static void TestIgnored() {
     CHECK(k.OnEvent(Ev(7, 1, 0, 11)).empty());
 }
 
-static void TestDedupeAndSpecies() {
+static void TestDedupe() {
     KillTracker k(Small());
+    k.SetConfig(2, true);
     k.OnMissionLoad("m1");
     CHECK(k.OnEvent(Ev(7, 1, 0, 10)) == Ids{ 201 });  // first grunt
-    CHECK(k.OnEvent(Ev(7, 1, 0, 10)).empty());        // same actor handle
+    CHECK(k.OnEvent(Ev(7, 1, 0, 10)).empty());        // same actor handle: no second count
     CHECK(k.Count() == 1);
-    CHECK(k.OnEvent(Ev(8, 1, 0, 10)).empty());        // second grunt: species only once
-    CHECK(k.OnEvent(Ev(9, 1, 1, 11)) == (Ids{ 101, 202 }));  // 3rd kill: milestone, then first elite
-    CHECK(k.OnEvent(Ev(10, 1, 1, 11)).empty());
+    CHECK((k.OnEvent(Ev(8, 1, 1, 11)) == Ids{ MilestoneId(1, 2), 202 }));  // 2nd kill: milestone, first elite
+    CHECK(k.OnEvent(Ev(8, 1, 1, 11)).empty());
 }
 
 // QUESTIONS #9: a script despawning a hostile actor (ERASE) counts as a kill.
 static void TestEraseCounts() {
     KillTracker k(Small());
+    k.SetConfig(3, true);
     k.OnMissionLoad("m1");
     CHECK(k.OnEvent(Ev(1, 1, 0, 11, false)) == Ids{ 202 });       // erased elite: species
     CHECK(k.OnEvent(Ev(2, 1, 0, 12, false, 0x20)).empty());      // kill flags are ignored on ERASE: still counts
     CHECK(k.Count() == 2);
-    CHECK(k.OnEvent(Ev(3, 1, 0, 12, false)) == Ids{ 101 });      // 3rd: milestone, from erases alone
+    CHECK(k.OnEvent(Ev(3, 1, 0, 12, false)) == Ids{ MilestoneId(1, 3) });  // 3rd: milestone, from erases alone
     CHECK(k.OnEvent(Ev(3, 1, 0, 12)).empty());                   // the same actor dying too: no double count
     CHECK(k.OnEvent(Ev(4, 1, 0, 12)).empty());
     CHECK(k.OnEvent(Ev(4, 1, 0, 12, false)).empty());            // ...or erased after dying
     CHECK(k.Count() == 4);
 }
 
-static void TestVariantMatching() {
+static void TestMissionSwitchResetsCount() {
     KillTracker k(Small());
+    k.SetConfig(2, true);
     k.OnMissionLoad("m1");
-    CHECK(k.OnEvent(Ev(1, 1, 0, 11)) == Ids{ 202 });
-    CHECK(k.OnEvent(Ev(2, 1, 0, 12)).empty());        // warthog variant has no species location
-    CHECK(k.OnEvent(Ev(3, 1, 0, 99)) == Ids{ 101 });  // unknown variant still counts as a kill
-    AiEvent hi = Ev(4, 1, 0, 10);
-    hi.var = 0x1234000Au;                             // only the low 16 bits are the tag index
-    CHECK(k.OnEvent(hi) == Ids{ 201 });
-}
-
-static void TestMissionSwitchAndNoRepeat() {
-    KillTracker k(Small());
-    k.OnMissionLoad("m1");
-    k.OnEvent(Ev(1, 1, 0, 99));
-    k.OnEvent(Ev(2, 1, 0, 99));
-    CHECK(k.Count() == 2);
-    k.OnMissionLoad("m2");  // new run: count resets
+    CHECK(Feed(k, 1, 1) == Ids{});
+    CHECK(k.Count() == 1);
+    k.OnMissionLoad("m2");  // new run: count resets, so m2's 2nd kill is its own milestone 2
     CHECK(k.Count() == 0);
     CHECK(k.OnEvent(Ev(1, 1, 0, 10)) == Ids{ 302 });  // same handle value is a fresh actor in a new run
-    CHECK(k.OnEvent(Ev(2, 1, 0, 99)) == Ids{ 301 });
+    CHECK(k.OnEvent(Ev(2, 1, 0, 99)) == Ids{ MilestoneId(2, 2) });
     k.OnMissionLoad("m1");  // restart m1: counting restarts from zero
     CHECK(k.Count() == 0);
-    Ids all;
-    for (uint32_t i = 1; i <= 8; ++i) {
-        for (int64_t id : k.OnEvent(Ev(i, 2, 0, 10))) all.push_back(id);
-    }
-    CHECK(all == (Ids{ 201, 101, 102 }));
-    k.OnMissionLoad("m1");  // replay: nothing is ever returned twice
-    for (uint32_t i = 1; i <= 8; ++i) CHECK(k.OnEvent(Ev(i, 2, 0, 10)).empty());
-    CHECK(k.Count() == 8);
+    CHECK(Feed(k, 1, 4) == (Ids{ MilestoneId(1, 2), MilestoneId(1, 4) }));
+    k.OnMissionLoad("m1");  // replay: nothing is returned twice
+    CHECK(Feed(k, 1, 4).empty());
+}
+
+// Slot options arrive after kills may have started: SetConfig re-evaluates the whole history.
+static void TestSetConfigAfterKills() {
+    KillTracker k(Small());
+    k.OnMissionLoad("m1");
+    CHECK(k.OnEvent(Ev(1, 1, 0, 10)).empty());
+    CHECK(k.OnEvent(Ev(2, 1, 1, 11)).empty());
+    Feed(k, 10, 5);
+    CHECK(k.Count() == 7);
+    k.OnMissionLoad("m2");
+    CHECK(k.OnEvent(Ev(1, 1, 0, 10)).empty());
+    CHECK(k.OnEvent(Ev(2, 1, 0, 99)).empty());
+    Ids got = k.SetConfig(2, true);
+    std::sort(got.begin(), got.end());
+    CHECK((got == Ids{ 201, 202, 302, MilestoneId(1, 2), MilestoneId(1, 4), MilestoneId(1, 6), MilestoneId(2, 2) }));
+    CHECK(k.SetConfig(2, true).size() == got.size());     // a repeat re-evaluates everything (caller de-dups)
+    CHECK(k.OnEvent(Ev(3, 1, 0, 99)).empty());           // m2 count 3: not a multiple
+    CHECK(k.OnEvent(Ev(4, 1, 0, 99)) == Ids{ MilestoneId(2, 4) });
+    Ids other = k.SetConfig(5, false);                    // a different seed: only 5-multiples, no species
+    CHECK(other == Ids{ MilestoneId(1, 5) });             // peaks are 7 (m1) and 4 (m2)
+    CHECK(k.SetConfig(0, false).empty());
+}
+
+// QA 5.4 m2: a different seed connecting must not be credited with kills made for the old one.
+static void TestResetHistory() {
+    KillTracker k(Small());
+    k.OnMissionLoad("m1");
+    Feed(k, 1, 4);
+    k.OnEvent(Ev(50, 1, 0, 10));                         // a grunt: species 201 seen
+    CHECK(k.SetConfig(2, true).size() == 3);             // 2, 4 and species
+    k.ResetHistory();
+    CHECK(k.SetConfig(2, true).empty());                 // new seed: nothing from before
+    CHECK(Feed(k, 100, 1) == Ids{ MilestoneId(1, 6) });  // the current run's count carries on
 }
 
 static void TestRealA10Table() {
@@ -124,8 +194,13 @@ static void TestRealA10Table() {
     CHECK(it != t.end());
     if (it == t.end()) return;
     const MissionKillTable& a = it->second;
-    CHECK(!a.squads.empty() && a.milestones.size() == 3 && a.species.size() == 2 && !a.variants.empty());
+    CHECK(!a.squads.empty() && a.missionNo == 1 && a.species.size() == 2 && !a.variants.empty());
+    int expectNo = 0;
+    for (const char* code : { "a10", "a30", "a50", "b30", "b40", "c10", "c20", "c40", "d20", "d40" }) {
+        CHECK(t.at(code).missionNo == ++expectNo);
+    }
     KillTracker k(GetKillTables());
+    k.SetConfig(25, true);
     k.OnMissionLoad("a10");
     // a10 squad (1,0) is hostile; variant 2655 = grunt, 2419 = elite.
     Ids got;
@@ -134,20 +209,23 @@ static void TestRealA10Table() {
     feed(2655);
     CHECK(got == Ids{ 1010019004 });  // first grunt
     feed(2419);
-    CHECK(got == (Ids{ 1010019004, 1010019003 }));  // first elite
-    while (k.Count() < 10) feed(2655);
-    CHECK(got.size() == 3 && got.back() == 1010019000);  // 10 kills
+    CHECK(got.size() == 2 && got[1] == 1010019003);  // first elite
     while (k.Count() < 50) feed(2655);
-    CHECK((got == Ids{ 1010019004, 1010019003, 1010019000, 1010019001, 1010019002 }));
+    CHECK((got == Ids{ 1010019004, 1010019003, MilestoneId(1, 25), MilestoneId(1, 50) }));
+    CHECK(MilestoneId(1, 25) == 1011010025LL);
 }
 
 int main() {
-    TestThresholds();
+    TestIdFormula();
+    TestIntervalMilestones();
+    TestIntervalOneAndNone();
+    TestSpeciesToggle();
     TestIgnored();
-    TestDedupeAndSpecies();
+    TestDedupe();
     TestEraseCounts();
-    TestVariantMatching();
-    TestMissionSwitchAndNoRepeat();
+    TestMissionSwitchResetsCount();
+    TestSetConfigAfterKills();
+    TestResetHistory();
     TestRealA10Table();
     std::printf("kill-tracker tests: %d checks, %d failed\n", g_checks, g_failures);
     return g_failures == 0 ? 0 : 1;

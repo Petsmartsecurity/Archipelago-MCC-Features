@@ -53,5 +53,6 @@ class MCCWorld(World):
         return {
             "final_mission": self.final_mission,
             "skullsanity": self.options.skullsanity.value,
-            "killsanity": self.options.killsanity.value,
+            "kill_milestone_interval": self.options.kill_milestone_interval.value,
+            "kill_species_checks": int(bool(self.options.kill_species_checks.value)),
         }

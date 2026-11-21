@@ -92,7 +92,7 @@ static void TestPending() {
     CHECK(p.IsConfirmed(99) && !p.Add(99));
     CHECK(p.Pending().size() == 1);
 
-    // IDs that aren't locations of the connected slot are dropped (goal mission, killsanity off)
+    // IDs that aren't locations of the connected slot are dropped (goal mission, a kill milestone above the seed's cap)
     {
         PendingChecks r;
         r.Add(101000); r.Add(110000); r.Add(1010010000);

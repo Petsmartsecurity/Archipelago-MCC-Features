@@ -30,16 +30,42 @@ namespace haloap {
             if (m_emitted.insert(id).second) earned.push_back(id);
         };
         int count = Count();
-        for (const auto& m : m_cur->milestones) {
-            if (count >= m.threshold) emit(m.id);
+        int& peak = m_peak[m_cur->missionNo];
+        if (count > peak) peak = count;
+        if (m_interval > 0 && count % m_interval == 0 && count <= kMaxMilestoneCount) {
+            emit(MilestoneId(m_cur->missionNo, count));
         }
         int variant = static_cast<int>(ev.var & 0xFFFF);
         for (const auto& v : m_cur->variants) {
             if (v.variant != variant) continue;
             for (const auto& s : m_cur->species) {
-                if (std::strcmp(s.species, v.species) == 0) emit(s.id);
+                if (std::strcmp(s.species, v.species) != 0) continue;
+                m_speciesSeen.insert(s.id);  // remembered even while species checks are off/unknown
+                if (m_species) emit(s.id);
             }
             break;
+        }
+        return earned;
+    }
+
+    std::vector<int64_t> KillTracker::SetConfig(int interval, bool species) {
+        m_interval = interval < 0 ? 0 : (interval > 100 ? 100 : interval);
+        m_species = species;
+        m_emitted.clear();
+        std::vector<int64_t> earned;
+        if (m_interval > 0) {
+            for (const auto& [code, table] : m_tables) {
+                auto it = m_peak.find(table.missionNo);
+                if (it == m_peak.end()) continue;
+                for (int k = m_interval; k <= it->second && k <= kMaxMilestoneCount; k += m_interval) {
+                    if (m_emitted.insert(MilestoneId(table.missionNo, k)).second) earned.push_back(MilestoneId(table.missionNo, k));
+                }
+            }
+        }
+        if (m_species) {
+            for (int64_t id : m_speciesSeen) {
+                if (m_emitted.insert(id).second) earned.push_back(id);
+            }
         }
         return earned;
     }

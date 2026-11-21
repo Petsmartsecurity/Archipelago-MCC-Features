@@ -39,7 +39,7 @@ namespace haloap {
         bool Confirm(int64_t id);
 
         // Drops pending IDs that are not locations of the connected slot (e.g. the goal mission's completion,
-        // or a kill check when killsanity is off), so they aren't resent forever. Returns how many were dropped.
+        // or a kill check the seed doesn't have), so they aren't resent forever. Returns how many were dropped.
         size_t RetainOnly(const std::set<int64_t>& slotLocations);
 
         // On slot connect: confirm what the server has, drop non-locations (only if the server sent any locations),

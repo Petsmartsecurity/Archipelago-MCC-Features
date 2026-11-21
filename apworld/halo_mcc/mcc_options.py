@@ -20,18 +20,58 @@ class SkullSanity(Choice):
     default = 1
 
 
-class Killsanity(Choice):
+class KillMilestoneInterval(Range):
     """
-    Adds checks for killing enemies. The checks are sent the moment the kill happens.
+    Adds a check every N enemy kills in each mission (N, 2N, 3N, ...), so with 25 you get checks at 25, 50, 75
+    kills and so on. The count restarts each time you start a mission, and a check is sent the moment the kill
+    happens (reverting to a checkpoint does not take it back). Kills by allies and vehicles count; enemies that
+    a script removes count too; Flood infection forms do not.
 
-    off:        No kill checks.
-    milestones: Per-mission kill-count checks (for example 10, 25, 50 kills) and a "first kill of
-                each enemy type" check per mission. Each check is placed in its mission.
+    0 turns kill milestone checks off. Smaller numbers mean many more checks (1 is a check for every single kill
+    up to the cap, which is hundreds per mission). The highest milestone in a mission is set by
+    kill_milestone_max_percent and kill_difficulty.
     """
-    display_name = "Killsanity"
-    option_off = 0
-    option_milestones = 1
+    display_name = "Kill Milestone Interval"
+    range_start = 0
+    range_end = 100
     default = 0
+
+
+class KillMilestoneMaxPercent(Range):
+    """
+    The highest kill milestone in a mission is at most this percent of that mission's enemy count, so every
+    milestone can be reached in a single run of the mission. For example 50 with Normal enemy counts on a mission
+    with 143 enemies means milestones up to 71 kills. Only used when kill_milestone_interval is above 0.
+    """
+    display_name = "Kill Milestone Max Percent"
+    range_start = 10
+    range_end = 90
+    default = 50
+
+
+class KillDifficulty(Choice):
+    """
+    Which enemy count kill_milestone_max_percent is taken from.
+
+    normal:    The smaller of the Normal and Legendary enemy counts (a few missions have fewer enemies on
+               Legendary). Reachable whatever difficulty you play. Choose this on Heroic too; Heroic counts have
+               not been measured yet.
+    legendary: The Legendary difficulty enemy count. Can allow more milestones, but they are only reachable if
+               you play on Legendary.
+    """
+    display_name = "Kill Difficulty"
+    option_normal = 0
+    option_legendary = 1
+    default = 0
+
+
+class KillSpeciesChecks(Toggle):
+    """
+    Adds a "First <enemy type> Kill" check in each mission for every enemy type that appears there in numbers
+    (for example grunt, elite, jackal). Independent of the kill milestones.
+    """
+    display_name = "Kill Species Checks"
+    default = False
 
 
 class SkullsRequired(Range):
@@ -76,7 +116,10 @@ class CeFinalMission(Choice):
 @dataclass
 class MCCOptions(PerGameCommonOptions):
     skullsanity: SkullSanity
-    killsanity: Killsanity
+    kill_milestone_interval: KillMilestoneInterval
+    kill_milestone_max_percent: KillMilestoneMaxPercent
+    kill_difficulty: KillDifficulty
+    kill_species_checks: KillSpeciesChecks
     skulls_required: SkullsRequired
     # powerups: Powerups
     ce_enabled: CeEnabled
