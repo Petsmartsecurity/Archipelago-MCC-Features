@@ -10,7 +10,7 @@ CE_SKULL_DISABLERS: list[str] = [*GAME_SKULLS["ce"], *NON_SCORING_SKULLS["ce"]]
 
 # create our own item object that has the game set correctly, everything else is the same as the base item object
 class MCCItem(Item):
-    game = "Halo Master Chief Collection"
+    game = "Halo The Master Chief Collection"
 
 
 # this is what maps items to their ID

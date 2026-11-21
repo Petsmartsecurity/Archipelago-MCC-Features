@@ -5,12 +5,12 @@ from .data.levels import LEVEL_DATA
 
 #create our own location object that gets everything from the base location object and change game
 class MCCLocation(Location):
-    game = "Halo Master Chief Collection"
+    game = "Halo The Master Chief Collection"
 
 #map all locations to their id
 def get_location_name_to_id():
     location_map = {
-        **{f"{level} Complete ": data.offset for level, data in LEVEL_DATA.items()},
+        **{f"{level} Complete": data.offset for level, data in LEVEL_DATA.items()},
         **{f"{data.level} - {name}": data.id for name, data in CE_LOCATION_DATA.items() if data.type == "Chapter"},
         **{f"{data.level} - {name}": data.id for name, data in CE_LOCATION_DATA.items() if data.type == "Skull"},
     }

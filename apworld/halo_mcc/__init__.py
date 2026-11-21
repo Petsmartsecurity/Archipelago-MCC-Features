@@ -44,7 +44,7 @@ class MCCWorld(World):
 
     #get the name of a filler item, used to fill unfilled locations
     def get_filler_item_name(self):
-        items.get_filler_item_name(self)
+        return items.get_filler_item_name(self)
 
     def generate_early(self):
         generate_early.generate_early(self)
