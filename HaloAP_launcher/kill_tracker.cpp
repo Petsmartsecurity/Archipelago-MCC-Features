@@ -19,11 +19,13 @@ namespace haloap {
         // ERASE (a script despawning a hostile actor) counts as a kill, by the user's choice (QUESTIONS #9, ADR-003).
         // A scripted unit_kill (death with unit kill flag 0x20) still does not count.
         if (ev.kill && ev.ekf != 0xFF && (ev.ekf & 0x20)) return earned;
+        // Counted by actor variant, not squad: migrated actors sit in empty destination squads or have enc/sq = -1.
+        const int variant = static_cast<int>(ev.var & 0xFFFF);
         bool hostile = false;
-        for (const auto& s : m_cur->squads) {
-            if (s.enc == ev.enc && s.sq == ev.sq) { hostile = true; break; }
+        for (int hv : m_cur->hostileVariants) {
+            if (hv == variant) { hostile = true; break; }
         }
-        if (!hostile) return earned;
+        if (!hostile) return earned;  // friendly, uncountable or unknown variant
         if (!m_seen.insert(ev.ah).second) return earned;  // same actor already counted this run
 
         auto emit = [&](int64_t id) {
@@ -35,7 +37,6 @@ namespace haloap {
         if (m_interval > 0 && count % m_interval == 0 && count <= kMaxMilestoneCount) {
             emit(MilestoneId(m_cur->missionNo, count));
         }
-        int variant = static_cast<int>(ev.var & 0xFFFF);
         for (const auto& v : m_cur->variants) {
             if (v.variant != variant) continue;
             for (const auto& s : m_cur->species) {

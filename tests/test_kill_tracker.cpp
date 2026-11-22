@@ -26,12 +26,13 @@ static KillTables Small() {
     KillTables t;
     t["m1"] = { 1, { {1, 0}, {1, 1}, {2, 0} },
                 { {"grunt", 201}, {"elite", 202} },
-                { {10, "grunt"}, {11, "elite"}, {12, "warthog"} } };
-    t["m2"] = { 2, { {1, 0} }, { {"grunt", 302} }, { {10, "grunt"} } };
+                { {10, "grunt"}, {11, "elite"}, {12, "warthog"}, {50, "marine"}, {60, "flood_infection"} },
+                { 10, 11, 12, 99 } };  // hostile countable variants; 50 = marine (friendly), 60 = flood_infection (uncountable)
+    t["m2"] = { 2, { {1, 0} }, { {"grunt", 302} }, { {10, "grunt"} }, { 10, 99 } };
     return t;
 }
 
-// Feeds `n` fresh hostile kills (variant 99: no species) and returns every ID emitted.
+// Feeds `n` fresh hostile kills (variant 99: hostile, no species) and returns every ID emitted.
 static Ids Feed(KillTracker& k, uint32_t firstHandle, int n, int variant = 99) {
     Ids all;
     for (int i = 0; i < n; ++i) {
@@ -86,7 +87,7 @@ static void TestSpeciesToggle() {
     CHECK(k.OnEvent(Ev(2, 1, 0, 10)).empty());       // second grunt: species only once
     CHECK(k.OnEvent(Ev(3, 1, 1, 11)) == Ids{ 202 });
     CHECK(k.OnEvent(Ev(4, 1, 1, 12)).empty());       // warthog variant has no species location
-    CHECK(k.OnEvent(Ev(5, 1, 1, 99)).empty());       // unknown variant still counts as a kill, no species
+    CHECK(k.OnEvent(Ev(5, 1, 1, 99)).empty());       // hostile variant without a species location: counts, no species
     AiEvent hi = Ev(6, 2, 0, 10);
     hi.var = 0x1234000Bu;                            // only the low 16 bits are the tag index
     CHECK(k.OnEvent(hi).empty());                    // elite again
@@ -100,14 +101,38 @@ static void TestIgnored() {
     k.OnMissionLoad("m1");
     CHECK(k.OnEvent(Ev(2, 1, 0, 10, true, 0x20)).empty());  // scripted unit_kill
     CHECK((k.OnEvent(Ev(3, 1, 0, 10, true, 0x40)) == Ids{ MilestoneId(1, 1), 201 }));  // silent kill (0x40) counts
-    CHECK(k.OnEvent(Ev(4, 9, 9, 11)).empty());              // non-hostile squad
-    CHECK(k.OnEvent(Ev(5, -1, -1, 11)).empty());
-    CHECK(k.OnEvent(Ev(4, 9, 9, 11, false)).empty());       // ERASE in a non-hostile squad
+    CHECK(k.OnEvent(Ev(4, 9, 9, 50)).empty());              // friendly variant (marine), squad irrelevant
+    CHECK(k.OnEvent(Ev(5, -1, -1, 50)).empty());
+    CHECK(k.OnEvent(Ev(4, 1, 0, 50, false)).empty());       // friendly ERASE, even inside a hostile squad
+    CHECK(k.OnEvent(Ev(6, 1, 0, 777)).empty());             // unknown variant: not counted
     CHECK(k.Count() == 1);
     k.OnMissionLoad("nope");  // unknown mission -> nothing
     CHECK(k.OnEvent(Ev(6, 1, 0, 11)).empty());
     k.OnMissionLoad("");
     CHECK(k.OnEvent(Ev(7, 1, 0, 11)).empty());
+}
+
+// ADR-003 amendment 2: kills are counted by the actor's variant, never by the squad it dies in.
+static void TestCountByActor() {
+    KillTracker k(Small());
+    k.SetConfig(1, true);
+    k.OnMissionLoad("m1");
+    // an actor migrated into an empty destination squad (7,7: not in the hostile squad list) still counts
+    CHECK((k.OnEvent(Ev(1, 7, 7, 10)) == Ids{ MilestoneId(1, 1), 201 }));
+    // enc/sq = -1 (e.g. a50 hunters) counts
+    CHECK((k.OnEvent(Ev(2, -1, -1, 11)) == Ids{ MilestoneId(1, 2), 202 }));
+    CHECK(k.OnEvent(Ev(3, -1, -1, 12, false)) == Ids{ MilestoneId(1, 3) });  // erase with enc/sq = -1 counts
+    // a friendly variant never counts, even sitting in a hostile squad (1,0), dying or erased
+    CHECK(k.OnEvent(Ev(4, 1, 0, 50)).empty());
+    CHECK(k.OnEvent(Ev(5, 1, 0, 50, false)).empty());
+    // flood_infection (uncountable): not in the hostile list
+    CHECK(k.OnEvent(Ev(6, 1, 0, 60)).empty());
+    // scripted unit_kill of a hostile variant does not count
+    CHECK(k.OnEvent(Ev(7, 1, 0, 10, true, 0x20)).empty());
+    CHECK(k.Count() == 3);
+    // an unknown variant is never counted
+    CHECK(k.OnEvent(Ev(8, 1, 0, 4242)).empty());
+    CHECK(k.Count() == 3);
 }
 
 static void TestDedupe() {
@@ -195,6 +220,10 @@ static void TestRealA10Table() {
     if (it == t.end()) return;
     const MissionKillTable& a = it->second;
     CHECK(!a.squads.empty() && a.missionNo == 1 && a.species.size() == 2 && !a.variants.empty());
+    for (const auto& kv : t) CHECK(!kv.second.hostileVariants.empty());
+    auto isHostile = [&](int v) { for (int h : a.hostileVariants) if (h == v) return true; return false; };
+    CHECK(isHostile(2655) && isHostile(2419));        // grunt, elite
+    CHECK(!isHostile(2413) && !isHostile(2653));      // crewmen are friendly
     int expectNo = 0;
     for (const char* code : { "a10", "a30", "a50", "b30", "b40", "c10", "c20", "c40", "d20", "d40" }) {
         CHECK(t.at(code).missionNo == ++expectNo);
@@ -221,6 +250,7 @@ int main() {
     TestIntervalOneAndNone();
     TestSpeciesToggle();
     TestIgnored();
+    TestCountByActor();
     TestDedupe();
     TestEraseCounts();
     TestMissionSwitchResetsCount();

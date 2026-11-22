@@ -1,7 +1,8 @@
 #pragma once
 // Pure, dependency-free kill-check tracker (PLAN 5.3/5.4, ADR-001 Amendment A).
 // Turns the DLL's KILL and ERASE events into newly earned milestone / species location IDs. An ERASE (a script
-// despawning an actor) counts like a kill (QUESTIONS #9); a scripted unit_kill death does not.
+// despawning an actor) counts like a kill (QUESTIONS #9); a scripted unit_kill death does not. A kill is counted by
+// the actor's VARIANT (hostile + countable per map data), not by its squad (ADR-003 amendment 2).
 #include "pipe_protocol.h"
 
 #include <cstdint>
@@ -18,9 +19,13 @@ namespace haloap {
     struct VariantSpecies { int variant; const char* species; };  // variant = tag index (var & 0xFFFF)
     struct MissionKillTable {
         int missionNo;                       // 1..10, campaign order (a10 = 1 ... d40 = 10)
-        std::vector<SquadKey> squads;        // hostile catalog squads
+        std::vector<SquadKey> squads;        // hostile catalog squads (kept for future squad checks; NOT used to count)
         std::vector<SpeciesLoc> species;
         std::vector<VariantSpecies> variants;
+        // ADR-003 amendment 2: actor-variant tag indices (var & 0xFFFF) of hostile, countable actors. A death/erase
+        // counts iff its variant is in this list; the squad/encounter at death time is irrelevant (script migration
+        // puts actors into empty destination squads, some have enc/sq = -1).
+        std::vector<int> hostileVariants;
     };
     using KillTables = std::map<std::string, MissionKillTable>;
 
