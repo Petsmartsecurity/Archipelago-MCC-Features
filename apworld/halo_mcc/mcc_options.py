@@ -113,6 +113,33 @@ class CeFinalMission(Choice):
     option_random_choice = 11
 
 
+class H2Enabled(Toggle):
+    """Should Halo 2 missions be part of the game (Access items, Complete and chapter locations, a final mission)"""
+    display_name = "Enable Halo 2"
+    default = False
+
+
+class H2FinalMission(Choice):
+    """What the goal mission for Halo 2 is. The Heretic is a cutscene and is never a mission."""
+    display_name = "Final Halo 2 Mission"
+    default = 15
+    option_the_armory = 2
+    option_cairo_station = 3
+    option_outskirts = 4
+    option_metropolis = 5
+    option_the_arbiter = 6
+    option_the_oracle = 7
+    option_delta_halo = 8
+    option_regret = 9
+    option_sacred_icon = 10
+    option_quarantine_zone = 11
+    option_gravemind = 12
+    option_uprising = 13
+    option_high_charity = 14
+    option_the_great_journey = 15
+    option_random_choice = 16
+
+
 @dataclass
 class MCCOptions(PerGameCommonOptions):
     skullsanity: SkullSanity
@@ -124,3 +151,5 @@ class MCCOptions(PerGameCommonOptions):
     # powerups: Powerups
     ce_enabled: CeEnabled
     ce_final_mission: CeFinalMission
+    h2_enabled: H2Enabled
+    h2_final_mission: H2FinalMission

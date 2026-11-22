@@ -8,6 +8,8 @@ def create_regions(world):
 
     #create region for each level
     for level, data in LEVEL_DATA.items():
+        if data.game not in world.enabled_games():
+            continue
         #create the region
         region = Region(level, world.player, world.multiworld)
         world.multiworld.regions.append(region)

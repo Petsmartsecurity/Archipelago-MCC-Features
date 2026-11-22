@@ -17,6 +17,9 @@ SKULL_OFFSET = 90000
 #ce game offset
 CE_OFFSET = 100000
 
+#halo 2 game offset (missions: H2_OFFSET + 1000*n in MCC order, see halo2_location_data.py)
+H2_OFFSET = 200000
+
 #ce missions offsets
 PILLER_OF_AUTUMN_OFFSET = CE_OFFSET + 1000
 HALO_CE_MISSION_OFFSET = CE_OFFSET + 2000

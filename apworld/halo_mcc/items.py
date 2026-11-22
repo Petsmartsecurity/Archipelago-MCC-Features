@@ -42,20 +42,24 @@ def create_filler(world, filled_locations):
 # create all items for the world
 def create_items(world):
     itempool: list[Item] = []
+    finals = (world.final_mission, world.h2_final_mission)
     for level, data in LEVEL_DATA.items():
-        if level != world.final_mission:
+        if data.game not in world.enabled_games():
+            continue
+        if level not in finals:
             if level == world.starting_mission:
                 world.multiworld.push_precollected(create_item_with_data(world, f"{level} Access"))
             else:
                 itempool.append(create_item_with_data(world, f"{level} Access"))
 
+    # skull items are CE-only
     # if option has all skulls on
-    if world.options.skullsanity >= 2:
+    if world.options.ce_enabled and world.options.skullsanity >= 2:
         for skull in GAME_SKULLS["ce"]:
             itempool.append(create_item_with_data(world, f"{skull} Skull"))
 
     # if option has only non-scoring skulls on
-    if world.options.skullsanity >= 1:
+    if world.options.ce_enabled and world.options.skullsanity >= 1:
         for skull in NON_SCORING_SKULLS["ce"]:
             itempool.append(create_item_with_data(world, f"{skull} Skull"))
 

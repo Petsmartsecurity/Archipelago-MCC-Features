@@ -41,3 +41,10 @@ LEVEL_DATA: Dict[str, LevelData] = {
         game="CE", offset=constants.MAW_OFFSET
     ),
 }
+
+
+# Halo 2 (ADR-004): generated table, MCC order. The Heretic (cutscene) is not a mission here.
+from .halo2_location_data import H2_MISSIONS
+
+for _name, (_n, _code, _offset) in H2_MISSIONS.items():
+    LEVEL_DATA[_name] = LevelData(game="H2", offset=_offset)

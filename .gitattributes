@@ -61,3 +61,7 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# generated files are compared byte for byte by the repo gates
+apworld/halo_mcc/data/halo2_location_data.py text eol=lf
+apworld/halo_mcc/data/halo_ce_kill_data.py text eol=lf

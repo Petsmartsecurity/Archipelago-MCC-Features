@@ -17,18 +17,24 @@ missions = [
     ]
 
 def set_rules(world):
+    # a game's final mission needs the Access item of every other mission of that game
+    others = {"CE": world.missions, "H2": world.h2_missions}
+    finals = {"CE": world.final_mission, "H2": world.h2_final_mission}
     for level, data in LEVEL_DATA.items():
-        if level != world.final_mission:
+        if data.game not in world.enabled_games():
+            continue
+        if level != finals[data.game]:
             entrance = world.multiworld.get_entrance(f"Menu -> {level}", world.player)
             required_item = f"{level} Access"
             #entrance.access_rule = lambda state, item=required_item, p=world.player: state.has(item, p)
             world.set_rule(entrance, Has(required_item))
         else:
             entrance = world.multiworld.get_entrance(f"Menu -> {level}", world.player)
-            world.set_rule(entrance, HasAll(*[f"{m} Access" for m in world.missions]))
+            world.set_rule(entrance, HasAll(*[f"{m} Access" for m in others[data.game]]))
 
 
-    if world.options.skullsanity.value == SkullSanity.option_all:
+    # skull logic is CE-only
+    if world.options.ce_enabled and world.options.skullsanity.value == SkullSanity.option_all:
         for level, data in LEVEL_DATA.items():
             if level == world.final_mission:
                 continue
