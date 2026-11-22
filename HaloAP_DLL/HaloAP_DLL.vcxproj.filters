@@ -51,6 +51,12 @@
     <ClInclude Include="pattern_scan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="hooks\h2_observe.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\h2_observe_logic.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
     <ClInclude Include="hooks\mission_complete.h">
       <Filter>hooks</Filter>
     </ClInclude>
@@ -90,6 +96,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pattern_scan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\h2_observe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\mission_complete.cpp">

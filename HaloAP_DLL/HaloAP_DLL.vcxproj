@@ -167,6 +167,8 @@
     <ClInclude Include="hooks\shell_level_load.h" />
     <ClInclude Include="hooks\skull_hook.h" />
     <ClInclude Include="hooks\kill_hook.h" />
+    <ClInclude Include="hooks\h2_observe.h" />
+    <ClInclude Include="hooks\h2_observe_logic.h" />
     <ClInclude Include="item_handler.h" />
     <ClInclude Include="minhook\MinHook.h" />
     <ClInclude Include="minhook\src\buffer.h" />
@@ -190,6 +192,7 @@
     <ClCompile Include="hooks\shell_level_load.cpp" />
     <ClCompile Include="hooks\skull_hook.cpp" />
     <ClCompile Include="hooks\kill_hook.cpp" />
+    <ClCompile Include="hooks\h2_observe.cpp" />
     <ClCompile Include="item_handler.cpp" />
     <ClCompile Include="minhook\src\buffer.c" />
     <ClCompile Include="minhook\src\hde\hde32.c" />

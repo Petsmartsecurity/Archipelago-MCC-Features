@@ -27,7 +27,7 @@ namespace haloap {
         mutable std::mutex m_mutex;
         std::set<int> m_unlockedMissions;
         bool m_missionCompleted[10] = {};
-        int m_finalMission = 9;
+        int m_finalMission = 9;  // -1 = no CE final
 
         // Translate AP item ID to mission index (0-9).
         // Returns -1 if the item is not a mission unlock.

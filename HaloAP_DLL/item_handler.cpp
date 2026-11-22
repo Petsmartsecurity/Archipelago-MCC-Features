@@ -50,10 +50,11 @@ namespace haloap {
     void ItemHandler::setFinalMission(int idx)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        if (idx >= 0 && idx < MISSION_COUNT)
+        // idx < 0 = no CE final (CE off in the seed, or none known): no CE mission is then treated as the final one.
+        if (idx < MISSION_COUNT)
         {
-            m_finalMission = idx;
-            printf("[items] Final mission set to %d\n", idx);
+            m_finalMission = idx < 0 ? -1 : idx;
+            printf("[items] Final mission set to %d\n", m_finalMission);
         }
     }
 

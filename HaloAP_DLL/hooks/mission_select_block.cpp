@@ -595,9 +595,10 @@ namespace haloap
 
     // Difficulty has ≤ 8 allocs (4 items), missions have 20 (10 items)
     // If we filtered but it wasn't actually missions, re-run unfiltered
-    if (mayBeMissions && totalAllocs <= 8)
+    // More than 20 allocs is not the 10-mission CE list (Halo 2 has 15); the filter is index-based and would hide one.
+    if (mayBeMissions && (totalAllocs <= 8 || totalAllocs > 20))
     {
-        printf("[hook] Only %d allocs — was difficulty, re-running unfiltered\n", totalAllocs);
+        printf("[hook] %d allocs — not the CE mission list, re-running unfiltered\n", totalAllocs);
         g_missionCounter.store(0);
         g_populatingMissions.store(false);
 

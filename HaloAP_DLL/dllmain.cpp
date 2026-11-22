@@ -17,6 +17,7 @@
 #include "hooks/chapter_title.h"
 #include "hooks/skull_hook.h"
 #include "hooks/kill_hook.h"
+#include "hooks/h2_observe.h"
 
 
 #pragma comment(lib, "psapi.lib")
@@ -95,6 +96,7 @@ namespace
 
     void UninstallAllHooks()
     {
+        haloap::UninstallH2Observe();
         haloap::UninstallMissionSelectBlockHook();
         UninstallVtableHooks();
         UninstallHalo1Hooks();
@@ -511,6 +513,8 @@ namespace
 
             for (int i = 0; i < 20 && !g_shutdown.load(); ++i)
             {
+                // halo2.dll is noticed within one slice; the call is a GetModuleHandle compare except on change / every ~2 s
+                haloap::H2Tick(g_pipe);
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         }

@@ -266,6 +266,13 @@ void PipeClient::HandleMessage(const std::string& message)
         return;
     }
 
+    if (message.rfind("H2_COMPLETED:", 0) == 0 || message.rfind("H2_FINAL:", 0) == 0)
+    {
+        // Halo 2 locking does not exist yet (observe-only build): accepted and ignored.
+        printf("[pipe] H2 progress message ignored (no H2 locking yet)\n");
+        return;
+    }
+
     if (message.rfind(skullsanityPrefix, 0) == 0)
     {
         int tier = std::atoi(message.c_str() + skullsanityPrefix.size());
