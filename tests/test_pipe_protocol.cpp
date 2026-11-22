@@ -4,6 +4,7 @@
 #include "telemetry_log.h"
 #include "shared/ai_event_format.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
@@ -56,6 +57,14 @@ static void TestMissionLoad() {
     CHECK(!ParseMissionLoad("MISSION_LOAD: levels\\d40"));
     CHECK(!ParseMissionLoad("MISSION_LOAD: levels\\\\x"));
     CHECK(!ParseMissionLoad("CHAPTER:1"));
+}
+
+static void TestMissionLoadH2() {
+    CHECK(ParseMissionLoad("MISSION_LOAD: path='scenarios\\solo\\03a_oldmombasa\\03a_oldmombasa'") == std::string("03a_oldmombasa"));
+    CHECK(ParseMissionLoad("MISSION_LOAD: scenarios\\solo\\08b_deltacontrol\\08b_deltacontrol") == std::string("08b_deltacontrol"));
+    CHECK(!ParseMissionLoad("MISSION_LOAD: path='scenarios\\solo\\03a_oldmombasa'"));
+    CHECK(!ParseMissionLoad("MISSION_LOAD: path='scenarios\\solo\\\\x'"));
+    CHECK(!ParseMissionLoad("MISSION_LOAD: path='scenarios\\multi\\x\\x'"));
 }
 
 static void TestChapter() {
@@ -153,23 +162,23 @@ static void TestReconcile() {
     {
         PendingChecks p;            // memory only until connect
         p.Add(PoA); p.Add(Maw);
-        p.SetGoalReached();
+        p.SetGoalReached("CE");
         p.Bind(seedA);              // slot connects: merged into seed A's file
-        CHECK(p.IsPending(PoA) && p.IsPending(Maw) && p.GoalReached());
+        CHECK(p.IsPending(PoA) && p.IsPending(Maw) && p.GoalReached("CE"));
         // The Maw is the goal, so its completion is not a location of the slot; PoA is missing (unchecked)
         ReconcileResult r = p.Reconcile({Halo}, {PoA});
         CHECK(r.dropped == 1);                       // Maw dropped
         CHECK(r.toSend.size() == 1 && r.toSend[0] == PoA);
-        CHECK(r.sendGoal);                           // goal kept even though its location was dropped (M1)
+        CHECK(p.GoalReached("CE"));                  // goal kept even though its location was dropped (M1)
         // launcher closes before the server echoes PoA
     }
     // Session 2 (seed A again, after restart): goal and PoA survive
     {
         PendingChecks p;
         p.Bind(seedA);
-        CHECK(p.GoalReached() && p.IsPending(PoA));
+        CHECK(p.GoalReached("CE") && p.IsPending(PoA));
         ReconcileResult r = p.Reconcile({PoA, Halo}, {Kill});   // server already has PoA now
-        CHECK(r.toSend.empty() && r.sendGoal);
+        CHECK(r.toSend.empty() && p.GoalReached("CE"));
         CHECK(!p.IsPending(PoA));
     }
     // New seed B on the same server address and slot name: inherits nothing (B1)
@@ -177,7 +186,7 @@ static void TestReconcile() {
         PendingChecks p;
         p.Bind(seedB);
         ReconcileResult r = p.Reconcile({}, {PoA, Halo, Kill});
-        CHECK(r.toSend.empty() && !r.sendGoal && p.Size() == 0);
+        CHECK(r.toSend.empty() && p.Goals().empty() && p.Size() == 0);
     }
     // Server sent no location list at all: can't judge, keep everything
     {
@@ -196,7 +205,41 @@ static void TestReconcile() {
     {
         PendingChecks p(seedB);
         p.Load();
-        CHECK(p.IsPending(303) && p.GoalReached() && p.Size() == 1);
+        CHECK(p.IsPending(303) && p.GoalReached("CE") && !p.GoalReached("H2") && p.Size() == 1);  // legacy GOAL = CE
+        p.SetGoalReached("H2");   // rewrites the file in the per-game format
+        PendingChecks q(seedB);
+        q.Load();
+        CHECK(q.GoalReached("CE") && q.GoalReached("H2") && q.IsPending(303));
+        std::ifstream in(seedB, std::ios::binary);
+        std::string all((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        all.erase(std::remove(all.begin(), all.end(), '\r'), all.end());  // text-mode write: CRLF on Windows
+        CHECK(all == "303\nGOAL:CE\nGOAL:H2\n");
+        // flags set before the seed was known survive Bind (union with the file's)
+        PendingChecks m;
+        m.SetGoalReached("H2");
+        m.Bind(seedB);
+        CHECK(m.GoalReached("CE") && m.GoalReached("H2") && m.Goals().size() == 2);
+    }
+    std::filesystem::remove(seedA);
+    std::filesystem::remove(seedB);
+
+    // Same run, reconnect to another seed: nothing carries over, the same ID can be queued again, A's file keeps A's
+    {
+        PendingChecks p;
+        p.Bind(seedA);
+        p.Add(101000);
+        p.Add(102000);
+        p.Confirm(102000);
+        p.SetGoalReached("CE");
+        p.Bind(seedB);
+        CHECK(p.Size() == 0);
+        CHECK(p.Goals().empty());
+        CHECK(p.Add(102000));
+        p.Bind(seedB);  // plain reconnect to the same seed keeps everything
+        CHECK(p.IsPending(102000));
+        p.Bind(seedA);
+        CHECK(p.IsPending(101000) && !p.IsPending(102000));
+        CHECK(p.GoalReached("CE"));
     }
     std::filesystem::remove(seedA);
     std::filesystem::remove(seedB);
@@ -305,6 +348,8 @@ static void TestTelemetry() {
         log.Pipe(false);
         log.MissionEnd("a10", "won");
         log.MissionLoad("a30");
+        log.H2("mission_load code=03a\t\"x\"\x01 \xc3\xa9 bad=\xff.");
+        log.H2(std::string(5000, 'z'));
         std::string got = NormT(ReadAll(log.Path()));
         std::string want =
             "{\"ev\":\"session\",\"t\":N,\"gen\":0,\"build\":\"build1\",\"launcher\":\"0.1\"}\n"
@@ -320,7 +365,9 @@ static void TestTelemetry() {
             "{\"ev\":\"squad\",\"t\":N,\"gen\":1,\"mission\":\"we\\\"ird\\\\\",\"enc\":-1,\"sq\":-1,\"living\":-1,\"spawned\":-1}\n"
             "{\"ev\":\"pipe\",\"t\":N,\"gen\":1,\"state\":\"disconnected\"}\n"
             "{\"ev\":\"mission_end\",\"t\":N,\"gen\":1,\"mission\":\"a10\",\"reason\":\"won\",\"rejected\":2}\n"
-            "{\"ev\":\"mission_load\",\"t\":N,\"gen\":2,\"mission\":\"a30\"}\n";
+            "{\"ev\":\"mission_load\",\"t\":N,\"gen\":2,\"mission\":\"a30\"}\n"
+            "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"mission_load code=03a\\t\\\"x\\\"\\u0001 \xc3\xa9 bad=\xef\xbf\xbd.\"}\n"
+            "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"" + std::string(2048, 'z') + "\"}\n";
         CHECK(got == want);
         if (got != want) std::printf("got:\n%s\n", got.c_str());
     }
@@ -341,6 +388,7 @@ int main() {
     TestLocationChecked();
     TestMissionComplete();
     TestMissionLoad();
+    TestMissionLoadH2();
     TestChapter();
     TestPending();
     std::printf("native-tests: %d checks, %d failed\n", g_checks, g_failures);

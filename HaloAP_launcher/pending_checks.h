@@ -1,6 +1,6 @@
 #pragma once
-// Location IDs not yet confirmed by the AP server, plus the "goal reached" flag, persisted per seed+slot
-// (one int64 per line, and a line "GOAL" when the goal was reached). Pure C++20, no AP dependencies.
+// Location IDs not yet confirmed by the AP server, plus one "goal reached" flag per game, persisted per seed+slot
+// (one int64 per line, and a line "GOAL:<game>" per flag, e.g. GOAL:CE; a legacy bare "GOAL" line reads as GOAL:CE). Pure C++20, no AP dependencies.
 // NOT thread-safe: the owner locks.
 
 #include <cstdint>
@@ -16,7 +16,6 @@ namespace haloap {
 
     struct ReconcileResult {
         std::vector<int64_t> toSend;  // pending IDs that are slot locations the server hasn't checked
-        bool sendGoal = false;        // goal was reached in this seed; GOAL is idempotent, so resend on every connect
         size_t dropped = 0;           // pending IDs that aren't locations of this slot
     };
 
@@ -46,8 +45,11 @@ namespace haloap {
         // and report what to send.
         ReconcileResult Reconcile(const std::set<int64_t>& serverChecked, const std::set<int64_t>& serverMissing);
 
-        void SetGoalReached() { if (!m_goal) { m_goal = true; Save(); } }
-        bool GoalReached() const { return m_goal; }
+        // Per-game goal flags (game = "CE" / "H2"). Whether GOAL goes to the server is decided by the caller, who
+        // knows the slot's enabled games (GameProgress::GoalReached).
+        void SetGoalReached(const std::string& game) { if (m_goals.insert(game).second) Save(); }
+        bool GoalReached(const std::string& game) const { return m_goals.count(game) != 0; }
+        const std::set<std::string>& Goals() const { return m_goals; }
 
         bool IsPending(int64_t id) const { return m_pending.count(id) != 0; }
         bool IsConfirmed(int64_t id) const { return m_confirmed.count(id) != 0; }
@@ -63,7 +65,7 @@ namespace haloap {
         std::string m_path;
         std::set<int64_t> m_pending;
         std::set<int64_t> m_confirmed;
-        bool m_goal = false;
+        std::set<std::string> m_goals;
         mutable bool m_saveFailed = false;
     };
 

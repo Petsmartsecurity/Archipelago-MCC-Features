@@ -53,8 +53,13 @@ namespace haloap {
     std::optional<std::string> ParseMissionLoad(std::string_view message) {
         auto rest = AfterPrefix(message, "MISSION_LOAD: ");
         if (!rest) return std::nullopt;
-        constexpr std::string_view marker = "levels\\";
+        // CE: ...levels\<code>\... ; Halo 2: ...scenarios\solo\<code>\<code>
+        std::string_view marker = "levels\\";
         size_t pos = rest->find(marker);
+        if (pos == std::string_view::npos) {
+            marker = "scenarios\\solo\\";
+            pos = rest->find(marker);
+        }
         if (pos == std::string_view::npos) return std::nullopt;
         size_t start = pos + marker.size();
         size_t end = rest->find('\\', start);

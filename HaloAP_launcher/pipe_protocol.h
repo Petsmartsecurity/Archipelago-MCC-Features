@@ -19,7 +19,8 @@ namespace haloap {
     // "MISSION_COMPLETE: <code>" -> code (non-empty, printable, no spaces, <= 32 chars).
     std::optional<std::string> ParseMissionComplete(std::string_view message);
 
-    // "MISSION_LOAD: ...levels\<code>\..." -> code (non-empty path component after "levels\").
+    // "MISSION_LOAD: ...levels\<code>\..." (CE) or "...scenarios\solo\<code>\..." (Halo 2) -> code (non-empty path
+    // component after the marker).
     std::optional<std::string> ParseMissionLoad(std::string_view message);
 
     // "CHAPTER:<n>" -> n in [0, 999].

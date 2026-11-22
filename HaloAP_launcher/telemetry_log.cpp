@@ -130,6 +130,39 @@ namespace haloap {
             + ",\"living\":" + std::to_string(e.living) + ",\"spawned\":" + std::to_string(e.total));
     }
 
+    namespace {
+        // Length of the valid UTF-8 sequence at s[i], 0 if invalid (rejects overlongs, surrogates, > U+10FFFF).
+        size_t Utf8Len(const std::string& s, size_t i) {
+            auto b = [&](size_t k) { return i + k < s.size() ? static_cast<unsigned char>(s[i + k]) : 0u; };
+            unsigned c = b(0);
+            auto cont = [&](size_t k, unsigned lo = 0x80, unsigned hi = 0xBF) { return b(k) >= lo && b(k) <= hi; };
+            if (c < 0x80) return 1;
+            if (c >= 0xC2 && c <= 0xDF) return cont(1) ? 2 : 0;
+            if (c >= 0xE0 && c <= 0xEF) {
+                unsigned lo = c == 0xE0 ? 0xA0 : 0x80, hi = c == 0xED ? 0x9F : 0xBF;
+                return cont(1, lo, hi) && cont(2) ? 3 : 0;
+            }
+            if (c >= 0xF0 && c <= 0xF4) {
+                unsigned lo = c == 0xF0 ? 0x90 : 0x80, hi = c == 0xF4 ? 0x8F : 0xBF;
+                return cont(1, lo, hi) && cont(2) && cont(3) ? 4 : 0;
+            }
+            return 0;
+        }
+    }
+
+    void TelemetryLog::H2(const std::string& msg) {
+        std::string text;
+        for (size_t i = 0; i < msg.size();) {
+            size_t n = Utf8Len(msg, i);
+            std::string piece = n ? msg.substr(i, n) : "\xEF\xBF\xBD";
+            if (text.size() + piece.size() > kH2MsgMax) break;
+            text += piece;
+            i += n ? n : 1;
+        }
+        std::lock_guard<std::mutex> lock(m_mutex);
+        WriteLine("h2", ",\"msg\":" + JsonString(text));
+    }
+
     void TelemetryLog::Death(const std::string& mission, const AiEvent& e) { Event(e, "death", mission); }
     void TelemetryLog::Erase(const std::string& mission, const AiEvent& e) { Event(e, "erase", mission); }
 

@@ -24,12 +24,19 @@ namespace haloap {
     PendingChecks::PendingChecks(std::string path) : m_path(std::move(path)) {}
 
     void PendingChecks::Bind(const std::string& path) {
+        if (!m_path.empty() && path != m_path) {
+            // Reconnected to a different seed in the same run: what's in memory belongs to (and is saved in) the old
+            // seed's file. Its server confirmations would also wrongly block the same IDs in the new seed.
+            m_pending.clear();
+            m_confirmed.clear();
+            m_goals.clear();
+        }
         std::set<int64_t> queued = m_pending;  // queued before the seed was known
-        bool goal = m_goal;
+        std::set<std::string> goals = m_goals;
         m_path = path;
         Load();
-        bool changed = goal && !m_goal;
-        m_goal = m_goal || goal;
+        bool changed = false;
+        for (const auto& g : goals) changed = m_goals.insert(g).second || changed;
         for (int64_t id : queued) {
             if (!m_confirmed.count(id) && m_pending.insert(id).second) changed = true;
         }
@@ -38,14 +45,15 @@ namespace haloap {
 
     void PendingChecks::Load() {
         m_pending.clear();
-        m_goal = false;
+        m_goals.clear();
         if (m_path.empty()) return;
         std::ifstream f(m_path);
         if (!f.is_open()) return;
         std::string line;
         while (std::getline(f, line)) {
             if (!line.empty() && line.back() == '\r') line.pop_back();
-            if (line == "GOAL") { m_goal = true; continue; }
+            if (line == "GOAL") { m_goals.insert("CE"); continue; }  // written before per-game flags
+            if (line.rfind("GOAL:", 0) == 0) { if (line.size() > 5 && line.size() <= 13) m_goals.insert(line.substr(5)); continue; }
             if (auto id = ParsePositiveInt64(line)) m_pending.insert(*id);
         }
     }
@@ -81,7 +89,6 @@ namespace haloap {
         slotLocs.insert(serverChecked.begin(), serverChecked.end());
         if (!slotLocs.empty()) r.dropped = RetainOnly(slotLocs);  // no location list = can't judge, keep everything
         r.toSend = Pending();
-        r.sendGoal = m_goal;
         return r;
     }
 
@@ -93,7 +100,7 @@ namespace haloap {
             std::ofstream f(tmp, std::ios::trunc);
             if (f.is_open()) {
                 for (int64_t id : m_pending) f << id << "\n";
-                if (m_goal) f << "GOAL\n";
+                for (const auto& g : m_goals) f << "GOAL:" << g << "\n";
                 f.flush();
                 ok = static_cast<bool>(f);
             }

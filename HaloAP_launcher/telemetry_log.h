@@ -27,6 +27,11 @@ namespace haloap {
         // Writes the erase line, then the squad line.
         void Erase(const std::string& mission, const AiEvent& e);
 
+        // Observe-only Halo 2 line (DLL message "H2: <text>"): {"ev":"h2",...,"msg":"<text>"}. Text is cut to
+        // kH2MsgMax bytes at a character boundary and invalid UTF-8 becomes U+FFFD. Does not change `gen`.
+        static constexpr size_t kH2MsgMax = 2048;
+        void H2(const std::string& msg);
+
         // Path of the open file, empty until the first write succeeded.
         std::string Path();
 

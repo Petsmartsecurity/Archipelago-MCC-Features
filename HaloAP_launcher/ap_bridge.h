@@ -13,6 +13,7 @@
 #include "pending_checks.h"
 #include "telemetry_log.h"
 #include "kill_tracker.h"
+#include "game_progress.h"
 
 namespace haloap {
 
@@ -107,7 +108,15 @@ namespace haloap {
         std::unique_ptr<TelemetryLog> m_telemetry;  // set by SetStateDir; internally locked
         std::set<int64_t> m_inFlight;  // sent on this connection, awaiting confirmation (poll thread only)
         std::atomic<bool> m_flushRequested{ false };
+        // "Re-evaluate the goal" request (set by either thread; cleared by the poll thread in FlushPending).
         std::atomic<bool> m_goalRequested{ false };
+        // Goal state, two parts, never held together (no nesting): the per-game flags live in m_pending (guarded by
+        // m_pendingMutex; the pipe thread sets a flag on a final mission's completion, the poll thread sets the ones
+        // seen before the slot connected); the slot config + pre-connect completions live in m_progress (guarded by
+        // m_progressMutex; pipe thread: OnMissionComplete, DllMessages; poll thread: Configure). GOAL is sent by
+        // the poll thread only, from copies of both.
+        std::mutex m_progressMutex;
+        GameProgress m_progress;
         std::atomic<bool> m_saveFailureLogged{ false };
         void FlushPending();  // poll thread only
         void OnLocationChecked(const std::list<int64_t>& locations);

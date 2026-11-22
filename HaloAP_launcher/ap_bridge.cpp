@@ -1,5 +1,4 @@
 #include "ap_bridge.h"
-#include "data/mission_map.h"
 #include "data/chapter_map.h"
 #include "shared/common.h"
 #include "data/kill_map.h"
@@ -14,58 +13,24 @@
 
 namespace haloap {
     
-    static const int64_t COMPLETION_LOCATIONS[] = {
-        101000, 102000, 103000, 104000, 105000,
-        106000, 107000, 108000, 109000, 110000
-    };
-    
-    std::unordered_map<std::string, int> MISSION_NAME_TO_INDEX = {
-    {"The Pillar of Autumn", 0},
-    {"Halo (CE)", 1},
-    {"The Truth and Reconciliation", 2},
-    {"The Silent Cartographer", 3},
-    {"Assault on the Control Room", 4},
-    {"343 Guilty Spark", 5},
-    {"The Library", 6},
-    {"Two Betrayals", 7},
-    {"Keyes", 8},
-    {"The Maw", 9},
-    };  
-    std::atomic<int> m_finalMission{ 9 };
-    
-    std::unordered_map<std::string, int> MISSION_CODE_TO_INDEX = {
-    {"a10", 0},
-    {"a30", 1},
-    {"a50", 2},
-    {"b30", 3},
-    {"b40", 4},
-    {"c10", 5},
-    {"c20", 6},
-    {"c40", 7},
-    {"d20", 8},
-    {"d40", 9},
-    };
-    
     std::string m_mission;
     
     void APBridge::SendCompletionState() {
         if (!m_sendToDll) return;
-        std::lock_guard<std::mutex> lock(m_checkedMutex);
-    
-        std::string msg = "COMPLETED:";
-        bool first = true;
-        for (int i = 0; i < 10; i++) {
-            if (m_checkedLocations.count(COMPLETION_LOCATIONS[i])) {
-                if (!first) msg += ",";
-                msg += std::to_string(i);
-                first = false;
-            }
+        std::set<int64_t> checked;
+        {
+            std::lock_guard<std::mutex> lock(m_checkedMutex);
+            checked = m_checkedLocations;
         }
-        m_sendToDll(msg);
-        std::cout << "[ap] Sent completion state: " << msg << "\n";
-        
-        m_sendToDll("FINAL_MISSION:" + std::to_string(m_finalMission));
-        std::cout << "[ap] Sent final mission: " << m_finalMission << "\n";
+        std::vector<std::string> msgs;
+        {
+            std::lock_guard<std::mutex> lock(m_progressMutex);
+            msgs = m_progress.DllMessages(checked);
+        }
+        for (const auto& m : msgs) {
+            m_sendToDll(m);
+            std::cout << "[ap] Sent to DLL: " << m << "\n";
+        }
     }
 
     APBridge::APBridge() : m_killTracker(std::make_unique<KillTracker>(GetKillTables())) {}
@@ -188,31 +153,44 @@ namespace haloap {
                 std::lock_guard<std::mutex> lock(m_killMutex);
                 m_killTracker->OnMissionLoad("");
             }
-            const auto& map = GetMissionIdMap();
-            auto it = map.find(missionCode);
-            if (it == map.end()) {
+            auto mission = GameProgress::ByCode(missionCode);
+            if (!mission) {
+                // 00a_introduction (The Heretic) is a cutscene: never a check
                 std::cerr << "[ap] unknown mission code: " << missionCode << "\n";
                 return true;  // we recognized the message type, just couldn't map it
             }
-
-            int64_t locationId = it->second;
-            std::cout << "[ap] MISSION_COMPLETE: " << missionCode
-                << " -> location " << locationId
-                << " (" << GetMissionDisplayName(locationId) << ")\n";
-
-            SendLocation(locationId);
-        
-            auto idx = MISSION_CODE_TO_INDEX.find(missionCode);
-            if (idx != MISSION_CODE_TO_INDEX.end() && idx->second == m_finalMission.load())
+            bool wanted;
             {
-                // Persisted as its own flag: the goal mission's completion is never a slot location (Phase 2 QA M1).
+                std::lock_guard<std::mutex> lock(m_progressMutex);
+                wanted = m_progress.Wants(mission->game);
+            }
+            if (!wanted) return true;  // a game this seed does not play
+
+            std::cout << "[ap] MISSION_COMPLETE: " << missionCode
+                << " -> location " << mission->id
+                << " (" << mission->name << ")\n";
+
+            SendLocation(mission->id);
+
+            std::optional<Game> goalGame;
+            {
+                std::lock_guard<std::mutex> lock(m_progressMutex);
+                goalGame = m_progress.OnMissionComplete(*mission);
+            }
+            if (goalGame)
+            {
+                // Persisted as its own per-game flag: the goal mission's completion is never a slot location (Phase 2 QA M1).
                 {
                     std::lock_guard<std::mutex> lock(m_pendingMutex);
-                    m_pending.SetGoalReached();
+                    m_pending.SetGoalReached(GameTag(*goalGame));
                 }
-                m_goalRequested.store(true);  // sent by the poll thread once the slot is connected
+                m_goalRequested.store(true);  // the poll thread sends GOAL once the slot is connected and every enabled game is done
             }
-        
+            return true;
+        }
+        if (message.rfind("H2: ", 0) == 0) {
+            // Observe-only (ADR-004 decision 5): telemetry line, no other effect.
+            if (m_telemetry) m_telemetry->H2(message.substr(4));
             return true;
         }
         if (message.rfind("HELLO", 0) == 0) {
@@ -232,7 +210,8 @@ namespace haloap {
             }
             {
                 std::lock_guard<std::mutex> lock(m_killMutex);
-                m_killTracker->OnMissionLoad(m_mission);  // new run: per-run kill count resets
+                // new run: per-run kill count resets; a Halo 2 mission has no kill table, so track nothing
+                m_killTracker->OnMissionLoad(GameProgress::IsH2Code(m_mission) ? "" : m_mission);
             }
             std::cout << "[launcher] Map: " << m_mission << "\n";
             return true;
@@ -264,6 +243,16 @@ namespace haloap {
             if (m_mission.empty())
             {
                 std::cerr << "[ap] didn't find mission, return to menu and restart mission\n";
+            }
+            if (auto h2 = GameProgress::H2Chapter(m_mission, *chapterIdx)) {
+                bool wanted;
+                {
+                    std::lock_guard<std::mutex> lock(m_progressMutex);
+                    wanted = m_progress.Wants(Game::H2);
+                }
+                std::cout << "[ap] H2 chapter " << m_mission << ":" << *chapterIdx << " " << h2->name << "\n";
+                if (wanted) SendLocation(h2->id);
+                return true;
             }
             std::string chapterCode = m_mission + ":" + std::to_string(*chapterIdx);
             std::cout << "[ap] chapter " << chapterCode << "\n";
@@ -343,7 +332,17 @@ namespace haloap {
             }
         }
         if (m_goalRequested.exchange(false)) {
-            m_client->StatusUpdate(APClient::ClientStatus::GOAL);
+            std::set<std::string> flags;
+            {
+                std::lock_guard<std::mutex> lock(m_pendingMutex);
+                flags = m_pending.Goals();
+            }
+            bool ready;
+            {
+                std::lock_guard<std::mutex> lock(m_progressMutex);
+                ready = m_progress.GoalReached(flags);
+            }
+            if (ready) m_client->StatusUpdate(APClient::ClientStatus::GOAL);
         }
     }
 
@@ -357,8 +356,7 @@ namespace haloap {
         {
             std::lock_guard<std::mutex> lock(m_checkedMutex);
             for (int64_t id : locations) {
-                bool isCompletion = false;
-                for (int64_t c : COMPLETION_LOCATIONS) isCompletion = isCompletion || (c == id);
+                bool isCompletion = GameProgress::ByLocation(id).has_value();
                 if (m_checkedLocations.insert(id).second && isCompletion) completionChanged = true;
             }
         }
@@ -402,17 +400,21 @@ namespace haloap {
         // Load already-checked locations from server
         {
             std::lock_guard<std::mutex> lock(m_checkedMutex);
+            // A different seed than the last connect in this run: the old seed's checks don't apply (m_lastSeed is
+            // written below, on this same thread).
+            if (!m_lastSeed.empty() && m_client->get_seed() != m_lastSeed) m_checkedLocations.clear();
             auto checked = m_client->get_checked_locations();
             for (int64_t locId : checked) {
                 m_checkedLocations.insert(locId);
             }
         }
         
-        if (slotData.contains("final_mission"))
+        std::vector<Game> earlyGoals;  // finals completed before the config was known
         {
-            m_finalMission = MISSION_NAME_TO_INDEX[slotData.at("final_mission").get<std::string>()];
+            std::lock_guard<std::mutex> lock(m_progressMutex);
+            earlyGoals = m_progress.Configure(slotData);
         }
-        
+
         if (slotData.contains("skullsanity"))
         {
             m_skullsanityTier = slotData["skullsanity"].get<int>();
@@ -431,9 +433,8 @@ namespace haloap {
             if (!r.toSend.empty()) {
                 std::cout << "[ap] " << r.toSend.size() << " unsent location check(s) to flush\n";
             }
-            if (r.sendGoal) {
-                m_goalRequested.store(true);  // idempotent on the server, so resent on every connect
-            }
+            for (Game g : earlyGoals) m_pending.SetGoalReached(GameTag(g));
+            m_goalRequested.store(true);  // re-evaluated (and, if reached, resent: idempotent on the server) on every connect
         }
         // Kill options from slot data (after Bind so queued kill checks land in this seed's pending file).
         // Missing keys = 0 / off (a seed from an older apworld has no kill checks).

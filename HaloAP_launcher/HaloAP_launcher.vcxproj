@@ -22,6 +22,7 @@
     <ClCompile Include="ap_bridge.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="kill_tracker.cpp" />
+    <ClCompile Include="game_progress.cpp" />
     <ClCompile Include="pending_checks.cpp" />
     <ClCompile Include="telemetry_log.cpp" />
     <ClCompile Include="pipe_protocol.cpp" />
@@ -44,6 +45,8 @@
     <ClInclude Include="Data\mission_map.h" />
     <ClInclude Include="Data\kill_map.h" />
     <ClInclude Include="kill_tracker.h" />
+    <ClInclude Include="game_progress.h" />
+    <ClInclude Include="Data\h2_map.h" />
     <ClInclude Include="pending_checks.h" />
     <ClInclude Include="telemetry_log.h" />
     <ClInclude Include="pipe_protocol.h" />
