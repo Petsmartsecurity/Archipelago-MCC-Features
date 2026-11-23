@@ -115,6 +115,9 @@ namespace haloap {
         // seen before the slot connected); the slot config + pre-connect completions live in m_progress (guarded by
         // m_progressMutex; pipe thread: OnMissionComplete, DllMessages; poll thread: Configure). GOAL is sent by
         // the poll thread only, from copies of both.
+        // Held across copy + build + send of the DLL completion state, so an older state is never sent last (QA 8.H2.7b m5).
+        // Taken first; never acquired while holding any other mutex of this class.
+        std::mutex m_sendStateMutex;
         std::mutex m_progressMutex;
         GameProgress m_progress;
         std::atomic<bool> m_saveFailureLogged{ false };

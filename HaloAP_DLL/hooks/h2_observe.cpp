@@ -10,7 +10,7 @@
 
 // Verified against halo2.dll (build in data/build_fingerprint.json) by tools/h2/h2_symbols.py (gate: h2-symbols) and
 // tools/shared/check_mod_patterns.py (gate: hook-patterns). Evidence: docs/research/h2-base-hooks.md (QA corrections
-// at its top win), docs/research/h2-kill-path.md 5.4/10, docs/stage-reports/phase8-h2-7a-qa.md.
+// at its top win), docs/research/h2-kill-path.md 5.4/10, docs/stage-reports/phase8-h2-7a-qa.md, phase8-h2-7b-qa.md.
 // Observe only: every detour reads, formats, queues a message and calls the original exactly once.
 namespace haloap {
 
@@ -41,7 +41,7 @@ namespace haloap {
             "40 56 41 54 41 55 48 81 EC A0 00 00 00 48 8B 05 ? ? ? ? 45 33 E4 44 0F 29 54 24 30 48 89 BC 24 90 00 00 "
             "00 44 0F 29 5C 24 20 48 8B 50 48 44 8B E9 4C 8D 04 02 48 85 D2 75 ? 45 8B C4 41 0F B7 CD 48 69 F1 A0 08 "
             "00 00";
-        // unit_die: only its call to actor_died is used (kill discriminator, not hooked).
+        // unit_die: only its calls to actor_died (kill discriminator) and game_time_get (tick) are used; not hooked.
         const char* kUnitDiePattern =
             "48 8B C4 48 89 58 08 48 89 70 10 48 89 78 18 55 41 54 41 55 41 56 41 57 48 8D 68 98 48 81 EC 40 01 00 00 "
             "0F 29 70 C8 41 0F B6 D9 48 8B 05 ? ? ? ? 49 8B F8 8B F1 44 8B FA 48 8B 48 48 48 85 C9 74 ? 4C 8D 14 01 EB "
@@ -51,7 +51,7 @@ namespace haloap {
         const char* kCachePattern =
             "40 55 57 48 83 EC 48 48 89 5C 24 60 48 8D 4C 24 68 48 8B 1D ? ? ? ? BD FF FF FF FF 48 89 74 24 70 40 32 "
             "F6 4C 89 64 24 40 4C 89 74 24 38 E8 ? ? ? ? 81 3B 64 61 65 68 44 8D 75 02 75 ?";
-        // game_difficulty_get_real_impl(): loads the game globals pointer at +0.
+        // game_difficulty_get_real_impl(): loads the game globals pointer at +0, reads +8 (mode) and +0x2C6 (difficulty).
         const char* kDifficultyPattern =
             "48 8B 05 ? ? ? ? 83 78 08 01 75 ? 0F B7 80 C6 02 00 00 C3 B8 01 00 00 00 C3";
 
@@ -60,10 +60,14 @@ namespace haloap {
         constexpr RipLoad kHdrFromCache         = { 0x11, { 0x48, 0x8B, 0x1D } };  // mov rbx,[cache header ptr]
         constexpr RipLoad kGlobalsFromDifficulty = { 0x0, { 0x48, 0x8B, 0x05 } };  // mov rax,[game globals]
         constexpr RipLoad kActorsFromDied       = { 0xD, { 0x48, 0x8B, 0x05 } };   // mov rax,[actor data array]
+        // game_time_get (reached from unit_die, no signature): mov rax,[time globals]; mov eax,[rax+8]; ret
+        constexpr RipLoad kTimeFromGameTime     = { 0x0, { 0x48, 0x8B, 0x05 } };
+        constexpr uint8_t kTimeTail[4] = { 0x8B, 0x40, 0x08, 0xC3 };  // at offset 7; the 0x08 is kTimeTickOffset
 
         // Call-site facts (checked at install, fail closed; re-verified offline by the gate).
         constexpr size_t kUnitDieCallOffset = 0x11F;      // E8 rel32 -> actor_died inside unit_die
         constexpr size_t kUnitDieKillRetOffset = 0x124;   // its return address = the kill discriminator
+        constexpr size_t kUnitDieTimeCallOffset = 0x12F;  // E8 rel32 -> game_time_get inside unit_die (tick anchor)
         constexpr size_t kStartCallOffset = 9;            // E8 rel32 -> game_start inside game_start_for_map
         constexpr size_t kStartRetOffset = 0xE;           // its return address = "load"
         constexpr size_t kGameStartCallSites = 2;         // game_start has exactly two direct callers (load, reset)
@@ -72,11 +76,12 @@ namespace haloap {
         constexpr int kOptsMode = 0x00, kOptsMapId = 0xA4, kOptsPath = 0xA8, kOptsDifficulty = 0x2BE, kOptsPathChars = 260;
         constexpr int kHdrName = 0xB0;
         constexpr int kGMode = 0x08, kGMapId = 0xAC, kGDifficulty = 0x2C6, kGRunning = 0x1808, kGWon = 0x1818;
+        constexpr int kTimeTickOffset = 0x08;
         constexpr int kActorUnit = 0x18, kActorTeam = 0x24, kActorSquad = 0x30, kActorPrevSquad = 0x34,
                       kActorStartLoc = 0x38, kActorChar = 0x54, kActorB7 = 0x07, kActorBd = 0x0D;
         constexpr uint32_t kActorSize = 0x8A0;
 
-        // ---- hook table ----------------------------------------------------------------------------------------
+        // ---- hook table (order of enum, kPatName, kPatText and kDetours must agree: the gate checks the source) -----
         enum Pat { P_GAME_START, P_START_FOR_MAP, P_COMPLETE, P_TITLE, P_SHELL, P_DIED, P_UNIT_DIE, P_CACHE, P_DIFF, P_COUNT };
         constexpr int kHookCount = P_UNIT_DIE;  // the first six patterns are hook targets
         const char* const kPatName[P_COUNT] = { "game_start", "game_start_for_map", "level_complete", "cinematic_title",
@@ -97,8 +102,12 @@ namespace haloap {
         std::atomic<uint32_t> g_dropped{ 0 };
         std::atomic<uintptr_t> g_base{ 0 };
         std::atomic<uintptr_t> g_size{ 0 };
-        std::atomic<uintptr_t> g_hdrVar{ 0 }, g_gVar{ 0 }, g_actVar{ 0 };   // addresses of the game's pointer variables
+        // addresses of the game's pointer variables (header, game globals, actor array, time globals)
+        std::atomic<uintptr_t> g_hdrVar{ 0 }, g_gVar{ 0 }, g_actVar{ 0 }, g_tickVar{ 0 };
         std::atomic<uintptr_t> g_loadRet{ 0 }, g_resetRet{ 0 }, g_killRet{ 0 };  // absolute return addresses (0 = unknown)
+        // shell coalescing (exactness not required: atomics only)
+        std::atomic<int32_t> g_lastShell{ INT32_MIN };
+        std::atomic<uint32_t> g_shellRep{ 0 };
 
         struct ModId {
             uintptr_t base = 0;
@@ -107,12 +116,17 @@ namespace haloap {
         };
         // Worker-thread only:
         HMODULE g_mod = nullptr;     // module we attached to (identity below); nullptr = not attached
-        ModId g_id;                  // identity at the last attach attempt
+        ModId g_id;                  // identity at the last attach
         int g_tickCount = 0;
         bool g_pinFailPrinted = false;
+        const uint8_t* g_addr[P_COUNT] = {};  // resolved signature addresses (null = not resolved)
+        int g_hits[P_COUNT] = {};
+        int g_retryStage = 0;                 // 0: none yet, 1: ~2 s retry done, 2: ~10 s retry done
+        ULONGLONG g_attachTick = 0;
 
         // ---- SEH helpers: plain C functions, no objects with destructors ---------------------------------------
         bool ReadIdentity(HMODULE h, ModId* id) {
+            if (!h) return false;
             __try {
                 auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(h);
                 if (dos->e_magic != IMAGE_DOS_SIGNATURE) return false;
@@ -128,18 +142,22 @@ namespace haloap {
             }
         }
 
-        // Every enabled hook must still start with MinHook's jmp (E9; EB when it patched above a short function).
-        bool ProloguesIntact() {
-            __try {
-                for (int i = 0; i < kHookCount; i++) {
-                    if (!g_on[i]) continue;
+        // Which enabled hooks still start with MinHook's jump (E9; EB when it patched above a short function).
+        void CheckPrologues(bool* intact, int* enabled, int* intactCount) {
+            *enabled = 0;
+            *intactCount = 0;
+            for (int i = 0; i < kHookCount; i++) {
+                intact[i] = false;
+                if (!g_on[i]) continue;
+                (*enabled)++;
+                __try {
                     uint8_t b = *static_cast<const uint8_t*>(g_target[i]);
-                    if (b != 0xE9 && b != 0xEB) return false;
+                    intact[i] = (b == 0xE9 || b == 0xEB);
                 }
-                return true;
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                return false;
+                __except (EXCEPTION_EXECUTE_HANDLER) {
+                    intact[i] = false;
+                }
+                if (intact[i]) (*intactCount)++;
             }
         }
 
@@ -168,6 +186,25 @@ namespace haloap {
             __except (EXCEPTION_EXECUTE_HANDLER) {
                 return false;
             }
+        }
+
+        // game_time_get: unit_die+0x12F must be E8 to a function that is exactly `mov rax,[rip+d]; mov eax,[rax+8]; ret`.
+        // Returns the address of the time-globals variable, or 0.
+        uintptr_t ResolveTickVar(const uint8_t* unitDie, uintptr_t base, uintptr_t size) {
+            if (!unitDie) return 0;
+            const uint8_t* fn = nullptr;
+            __try {
+                const uint8_t* site = unitDie + kUnitDieTimeCallOffset;
+                if (site[0] != 0xE8) return 0;
+                int32_t rel;
+                memcpy(&rel, site + 1, sizeof(rel));
+                fn = site + 5 + rel;
+                if (memcmp(fn + 7, kTimeTail, sizeof(kTimeTail)) != 0) return 0;
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER) {
+                return 0;
+            }
+            return ResolveRip(fn, kTimeFromGameTime, base, size);
         }
 
         // All E8 rel32 call sites to `target` in the executable sections. Returns the count (may exceed cap).
@@ -241,6 +278,21 @@ namespace haloap {
             }
         }
 
+        // Game tick (QA 7b m1): a tick that goes backwards within one game_start = a checkpoint revert.
+        bool ReadTick(int* out) {
+            uintptr_t var = g_tickVar.load(std::memory_order_relaxed);
+            if (!var) return false;
+            __try {
+                const uint8_t* t = *reinterpret_cast<const uint8_t* const*>(var);
+                if (!t) return false;
+                *out = *reinterpret_cast<const int32_t*>(t + kTimeTickOffset);
+                return true;
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER) {
+                return false;
+            }
+        }
+
         struct GInfo {
             bool ok = false;
             int mode = -1, mapid = -1, diff = -1, running = -1, won = -1;
@@ -291,7 +343,11 @@ namespace haloap {
 
         // ---- message plumbing (game threads: a bounded snprintf and SendAsync, nothing else) --------------------
         h2::Msg NewMsg(const char* ev) {
-            return h2::Msg(ev, g_seq.fetch_add(1, std::memory_order_relaxed) + 1, GetCurrentThreadId());
+            h2::Msg m(ev, g_seq.fetch_add(1, std::memory_order_relaxed) + 1, GetCurrentThreadId());
+            int tick;
+            if (ReadTick(&tick)) m.Add("tick=%d", tick);
+            else m.Add("tick=-");
+            return m;
         }
 
         void Send(h2::Msg& m) {
@@ -375,10 +431,29 @@ namespace haloap {
             Orig<TitleFn>(P_TITLE)(idx);
         }
 
-        void DetourShell(int msg, void* ctx) {
-            h2::Msg m = NewMsg("shell");  // ctx is deliberately not touched (QA: only ids 0x10-0x13 are safe to read)
+        void SendShell(int msg, uintptr_t ret, uint32_t rep, bool flush) {
+            h2::Msg m = NewMsg("shell");
             m.Add("msg=%d", msg);
+            if (ret) AddRet(m, "ret", ret);
+            if (rep) m.Add("rep=%u", rep);
+            if (flush) m.Add("flush=1");
             Send(m);
+        }
+
+        void DetourShell(int msg, void* ctx) {
+            const uintptr_t ret = reinterpret_cast<uintptr_t>(_ReturnAddress());  // both call sites are tail jumps: the host caller
+            // ctx is deliberately not touched (QA: only ids 0x10-0x13 are safe to read).
+            // Coalescing: the first of a run is sent, then one line per 64 repeats (rep = repeats so far), and the count is
+            // flushed when the id changes. Atomics only; a race can lose or duplicate a line, never block.
+            int32_t prev = g_lastShell.exchange(msg, std::memory_order_relaxed);
+            if (prev != msg) {
+                uint32_t rep = g_shellRep.exchange(0, std::memory_order_relaxed);
+                if (rep && prev != INT32_MIN) SendShell(prev, 0, rep, true);
+                SendShell(msg, ret, 0, false);
+            } else {
+                uint32_t c = g_shellRep.fetch_add(1, std::memory_order_relaxed) + 1;
+                if (h2::ShellRepeatDue(c)) SendShell(msg, ret, c, false);
+            }
             Orig<ShellFn>(P_SHELL)(msg, ctx);
         }
 
@@ -411,9 +486,10 @@ namespace haloap {
                                              reinterpret_cast<void*>(DetourShell), reinterpret_cast<void*>(DetourDied) };
 
         // ---- install / uninstall (worker thread only) ----------------------------------------------------------
-        // Holds a loader reference on halo2.dll for the scope: the module cannot be unloaded under a scan or a patch.
-        // MCC's own FreeLibrary during that window just drops its count; the real unload then happens in our
-        // destructor, on the worker thread, with no lock of ours held and outside MinHook's frozen-thread window.
+        // Holds a loader reference on halo2.dll for the scope. Used ONLY around MinHook create/enable/remove (MinHook
+        // reads and patches without SEH). Scans and prints run unpinned under SEH (QA 7b m4). MCC's own FreeLibrary
+        // during the pin only drops its count; the real unload then happens in our destructor, on the worker thread,
+        // with no lock of ours held and outside MinHook's freeze window.
         struct Pin {
             HMODULE h = nullptr;
             bool Acquire(HMODULE expect) {
@@ -429,32 +505,29 @@ namespace haloap {
             ~Pin() { Release(); }
         };
 
-        bool CreateAndEnable(int idx, void* target, bool sameBuild) {
+        constexpr int kStaleBuild = 1000;  // CreateAndEnable status: stale MinHook entry from a different build
+        constexpr int kNotAttempted = -1000;
+
+        // No printing here (pinned). Returns MH_OK (0) or the failing MH status / kStaleBuild.
+        int CreateAndEnable(int idx, void* target, bool sameBuild) {
             void* orig = nullptr;
             MH_STATUS s = MH_CreateHook(target, kDetours[idx], &orig);
             if (s == MH_ERROR_ALREADY_CREATED) {
                 // A previous mapping of this module at the same address left an entry behind (MinHook cannot remove it
                 // while the memory is unmapped). Only when the module is mapped again, pinned and the same build:
                 // MH_RemoveHook restores the saved 5 bytes (identical) and frees the entry.
-                if (!sameBuild) {
-                    printf("[h2] %s: stale MinHook entry from a different build, hook off\n", kPatName[idx]);
-                    return false;
-                }
+                if (!sameBuild) return kStaleBuild;
                 MH_RemoveHook(target);
                 s = MH_CreateHook(target, kDetours[idx], &orig);
             }
-            if (s != MH_OK) {
-                printf("[h2] %s: MH_CreateHook failed: %d (%s)\n", kPatName[idx], s, MH_StatusToString(s));
-                return false;
-            }
+            if (s != MH_OK) return static_cast<int>(s);
             g_orig[idx].store(orig, std::memory_order_release);  // before the jump exists
             s = MH_EnableHook(target);
             if (s != MH_OK) {
-                printf("[h2] %s: MH_EnableHook failed: %d (%s)\n", kPatName[idx], s, MH_StatusToString(s));
                 MH_RemoveHook(target);
-                return false;
+                return static_cast<int>(s);
             }
-            return true;
+            return MH_OK;
         }
 
         void AppendName(char* list, size_t cap, const char* s) {
@@ -463,111 +536,200 @@ namespace haloap {
             snprintf(list + n, cap - n, "%s%s", n ? "," : "", s);
         }
 
-        // Forget the hooks without touching the old module's memory (it is gone, replaced, or foreign).
+        // Forget everything without touching the old module's memory (it is gone, replaced, or foreign).
         void ForgetModule() {
             for (int i = 0; i < kHookCount; i++) g_on[i] = false;  // g_orig / g_target stay valid on purpose
-            g_hdrVar = g_gVar = g_actVar = 0;
-            g_loadRet = g_resetRet = g_killRet = 0;
+            for (int i = 0; i < P_COUNT; i++) { g_addr[i] = nullptr; g_hits[i] = 0; }
+            g_hdrVar = 0; g_gVar = 0; g_actVar = 0; g_tickVar = 0;
+            g_loadRet = 0; g_resetRet = 0; g_killRet = 0;
+            g_retryStage = 0;
             g_mod = nullptr;
         }
 
-        // Scans (only for hooks that are not installed) and installs. Returns false if the attempt could not start
-        // (module vanished); true once an attempt was made, whatever its outcome.
-        bool Attach(HMODULE h) {
-            Pin pin;
+        struct Derived {
+            uintptr_t hdrVar = 0, gVar = 0, actVar = 0, tickVar = 0, killRet = 0, loadRet = 0, resetRet = 0;
+        };
+
+        // Fills only the fields that are still 0, from the resolved signature addresses (installed targets included:
+        // the anchors sit beyond the 5 patched bytes). Everything under SEH; nothing is committed here.
+        void ComputeDerived(HMODULE h, const ModId& id, Derived* d, char* notes, size_t noteCap) {
+            if (!d->hdrVar) d->hdrVar = ResolveRip(g_addr[P_CACHE], kHdrFromCache, id.base, id.size);
+            if (!d->gVar) d->gVar = ResolveRip(g_addr[P_DIFF], kGlobalsFromDifficulty, id.base, id.size);
+            if (!d->actVar) d->actVar = ResolveRip(g_addr[P_DIED], kActorsFromDied, id.base, id.size);
+            if (!d->tickVar) d->tickVar = ResolveTickVar(g_addr[P_UNIT_DIE], id.base, id.size);
+            // Kill discriminator (M5): unit_die must contain E8 -> actor_died at +0x11F.
+            if (!d->killRet && g_addr[P_UNIT_DIE] && g_addr[P_DIED] &&
+                CallAtTargets(g_addr[P_UNIT_DIE] + kUnitDieCallOffset, g_addr[P_DIED])) {
+                d->killRet = reinterpret_cast<uintptr_t>(g_addr[P_UNIT_DIE]) + kUnitDieKillRetOffset;
+            }
+            // Load return address: game_start_for_map's first call is game_start. Reset = the other caller of game_start.
+            if (!d->loadRet && g_addr[P_START_FOR_MAP] && g_addr[P_GAME_START] &&
+                CallAtTargets(g_addr[P_START_FOR_MAP] + kStartCallOffset, g_addr[P_GAME_START])) {
+                d->loadRet = reinterpret_cast<uintptr_t>(g_addr[P_START_FOR_MAP]) + kStartRetOffset;
+            }
+            if (d->loadRet && !d->resetRet) {
+                const uint8_t* loadSite = g_addr[P_START_FOR_MAP] + kStartCallOffset;
+                const uint8_t* sites[4] = {};
+                size_t n = CallSitesInModule(h, g_addr[P_GAME_START], sites, 4);
+                if (n == kGameStartCallSites) {
+                    for (size_t k = 0; k < n; k++)
+                        if (sites[k] != loadSite) d->resetRet = reinterpret_cast<uintptr_t>(sites[k]) + 5;
+                } else {
+                    snprintf(notes + strlen(notes), noteCap - strlen(notes), "game_start has %zu direct callers (expected %zu): reset not classified. ", n, kGameStartCallSites);
+                }
+            }
+        }
+
+        bool Incomplete() {
+            for (int i = 0; i < kHookCount; i++) if (!g_on[i]) return true;
+            return !g_hdrVar.load() || !g_gVar.load() || !g_actVar.load() || !g_tickVar.load() || !g_killRet.load() ||
+                   !g_loadRet.load() || !g_resetRet.load();
+        }
+
+        // One scan/install pass. pass 0 = fresh attach (everything unknown); pass 1/2 = retry of what is still missing.
+        // Never rescans a signature that is already resolved (installed prologues are patched, so they could not match).
+        // Returns false if the pass could not run (module vanished or changed under it).
+        bool Pass(HMODULE h, int pass) {
             ModId id;
-            if (!pin.Acquire(h) || !ReadIdentity(h, &id)) {
-                if (!g_pinFailPrinted) printf("[h2] halo2.dll vanished while attaching; will retry\n");
+            if (!ReadIdentity(h, &id)) return false;
+            const ModId prev = g_id;
+            if (pass == 0) {
+                for (int i = 0; i < P_COUNT; i++) { g_addr[i] = nullptr; g_hits[i] = 0; }
+            } else if (!(id == g_id)) {
+                return false;
+            }
+            const auto base = reinterpret_cast<const uint8_t*>(h);
+            char notes[320] = {};
+
+            // 1. scan, unpinned (SEH inside FindUniquePatternInModule)
+            for (int i = 0; i < P_COUNT; i++) {
+                if (g_addr[i]) continue;
+                g_addr[i] = static_cast<const uint8_t*>(FindUniquePatternInModule(h, *kPatText[i], &g_hits[i]));
+                if (!g_addr[i]) printf("[h2] signature %s: %s\n", kPatName[i], g_hits[i] ? "ambiguous (2+ matches)" : "not found");
+            }
+            Derived d;
+            d.hdrVar = g_hdrVar; d.gVar = g_gVar; d.actVar = g_actVar; d.tickVar = g_tickVar;
+            d.killRet = g_killRet; d.loadRet = g_loadRet; d.resetRet = g_resetRet;
+            ComputeDerived(h, id, &d, notes, sizeof(notes));
+
+            // 2. the module must still be the one we read: nothing found above is used otherwise
+            ModId again;
+            if (GetModuleHandleA("halo2.dll") != h || !ReadIdentity(h, &again) || !(again == id)) {
+                if (!g_pinFailPrinted) printf("[h2] halo2.dll changed while scanning; will retry\n");
                 g_pinFailPrinted = true;
+                if (pass == 0) { for (int i = 0; i < P_COUNT; i++) g_addr[i] = nullptr; }
                 return false;
             }
             g_pinFailPrinted = false;
-            const bool sameBuild = g_id.stamp == id.stamp && g_id.size == id.size;  // at another base the old entries stay stale
-            g_id = id;
-            g_mod = h;
-            const auto base = reinterpret_cast<const uint8_t*>(h);
-            g_base = id.base;
-            g_size = id.size;
-
-            h2::Msg att = NewMsg("attach");
-            att.Add("base=%llx stamp=%x size=%x", static_cast<unsigned long long>(id.base), id.stamp, id.size);
-            Send(att);
-            printf("[h2] halo2.dll at %p (stamp %08x, size %x)\n", h, id.stamp, id.size);
-
-            // Resolve every signature: exactly one match in the executable sections or that item is off.
-            const uint8_t* addr[P_COUNT] = {};
-            int hits[P_COUNT] = {};
-            for (int i = 0; i < P_COUNT; i++) {
-                addr[i] = static_cast<const uint8_t*>(FindUniquePatternInModule(h, *kPatText[i], &hits[i]));
-                if (!addr[i]) printf("[h2] signature %s: %s\n", kPatName[i], hits[i] ? "ambiguous (2+ matches)" : "not found");
+            const bool sameBuild = pass != 0 || (prev.stamp == id.stamp && prev.size == id.size);  // at another base the old entries stay stale
+            if (pass == 0) {
+                g_id = id;
+                g_mod = h;
+                g_base = id.base;
+                g_size = id.size;
+                g_attachTick = GetTickCount64();
+                g_retryStage = 0;
+                h2::Msg att = NewMsg("attach");
+                att.Add("base=%llx stamp=%x size=%x", static_cast<unsigned long long>(id.base), id.stamp, id.size);
+                Send(att);
+                printf("[h2] halo2.dll at %p (stamp %08x, size %x)\n", h, id.stamp, id.size);
             }
+            if (notes[0]) printf("[h2] %s\n", notes);
 
-            // Anchors: RIP operands of signed functions, opcode bytes checked, inside the image.
-            g_hdrVar = ResolveRip(addr[P_CACHE], kHdrFromCache, id.base, id.size);
-            g_gVar = ResolveRip(addr[P_DIFF], kGlobalsFromDifficulty, id.base, id.size);
-            g_actVar = ResolveRip(addr[P_DIED], kActorsFromDied, id.base, id.size);
-
-            // Kill discriminator (M5): unit_die must contain E8 -> actor_died at +0x11F.
-            if (addr[P_UNIT_DIE] && addr[P_DIED] &&
-                CallAtTargets(addr[P_UNIT_DIE] + kUnitDieCallOffset, addr[P_DIED])) {
-                g_killRet = reinterpret_cast<uintptr_t>(addr[P_UNIT_DIE]) + kUnitDieKillRetOffset;
-            } else {
-                printf("[h2] unit_die -> actor_died link not verified: deaths are reported as kind=unknown\n");
+            // 3. pin only around MinHook create+enable, re-check identity inside the pin, no printing while pinned
+            int status[kHookCount];
+            bool pinned = false, need = false;
+            for (int i = 0; i < kHookCount; i++) {
+                status[i] = kNotAttempted;
+                if (!g_on[i] && g_addr[i]) need = true;
             }
-            // Load return address: game_start_for_map's first call is game_start. Reset = the other caller of game_start.
-            if (addr[P_START_FOR_MAP] && addr[P_GAME_START] &&
-                CallAtTargets(addr[P_START_FOR_MAP] + kStartCallOffset, addr[P_GAME_START])) {
-                const uint8_t* loadSite = addr[P_START_FOR_MAP] + kStartCallOffset;
-                g_loadRet = reinterpret_cast<uintptr_t>(addr[P_START_FOR_MAP]) + kStartRetOffset;
-                const uint8_t* sites[4] = {};
-                size_t n = CallSitesInModule(h, addr[P_GAME_START], sites, 4);
-                if (n == kGameStartCallSites) {
-                    for (size_t k = 0; k < n; k++)
-                        if (sites[k] != loadSite) g_resetRet = reinterpret_cast<uintptr_t>(sites[k]) + 5;
-                } else {
-                    printf("[h2] game_start has %zu direct callers (expected %zu): reset not classified\n", n, kGameStartCallSites);
+            if (need) {
+                Pin pin;
+                ModId inPin;
+                pinned = pin.Acquire(h) && ReadIdentity(h, &inPin) && inPin == id;
+                if (pinned) {
+                    g_hdrVar = d.hdrVar; g_gVar = d.gVar; g_actVar = d.actVar; g_tickVar = d.tickVar;  // commit before any jump exists
+                    g_killRet = d.killRet; g_loadRet = d.loadRet; g_resetRet = d.resetRet;
+                    for (int i = 0; i < kHookCount; i++) {
+                        if (g_on[i] || !g_addr[i]) continue;
+                        void* target = const_cast<uint8_t*>(g_addr[i]);
+                        g_target[i] = target;
+                        status[i] = CreateAndEnable(i, target, sameBuild);
+                        if (status[i] == MH_OK) g_on[i] = true;
+                    }
                 }
             } else {
-                printf("[h2] game_start_for_map -> game_start link not verified: starts are reported as kind=other\n");
+                g_hdrVar = d.hdrVar; g_gVar = d.gVar; g_actVar = d.actVar; g_tickVar = d.tickVar;
+                g_killRet = d.killRet; g_loadRet = d.loadRet; g_resetRet = d.resetRet;
+                pinned = true;
+            }
+            if (!pinned) {
+                printf("[h2] could not pin halo2.dll or it changed; will retry\n");
+                return false;
             }
 
+            // 4. report (unpinned)
             char on[200] = {}, off[240] = {};
             for (int i = 0; i < kHookCount; i++) {
-                g_on[i] = false;
-                if (!addr[i]) {
-                    char entry[48];
-                    snprintf(entry, sizeof(entry), "%s:%s", kPatName[i], hits[i] ? "ambig" : "none");
-                    AppendName(off, sizeof(off), entry);
+                if (g_on[i]) {
+                    AppendName(on, sizeof(on), kPatName[i]);
+                    if (status[i] == MH_OK)
+                        printf("[h2] hook %s installed at RVA %llx\n", kPatName[i], static_cast<unsigned long long>(g_addr[i] - base));
                     continue;
                 }
-                void* target = const_cast<uint8_t*>(addr[i]);
-                g_target[i] = target;
-                if (CreateAndEnable(i, target, sameBuild)) {
-                    g_on[i] = true;
-                    AppendName(on, sizeof(on), kPatName[i]);
-                    printf("[h2] hook %s installed at RVA %llx\n", kPatName[i],
-                           static_cast<unsigned long long>(addr[i] - base));
-                } else {
-                    char entry[48];
-                    snprintf(entry, sizeof(entry), "%s:hookfail", kPatName[i]);
-                    AppendName(off, sizeof(off), entry);
-                }
+                char entry[48];
+                if (!g_addr[i]) snprintf(entry, sizeof(entry), "%s:%s", kPatName[i], g_hits[i] ? "ambig" : "none");
+                else snprintf(entry, sizeof(entry), "%s:hookfail", kPatName[i]);
+                AppendName(off, sizeof(off), entry);
+                if (status[i] == kStaleBuild) printf("[h2] %s: stale MinHook entry from a different build, hook off\n", kPatName[i]);
+                else if (status[i] != kNotAttempted) printf("[h2] %s: MinHook failed: %d (%s)\n", kPatName[i], status[i], MH_StatusToString(static_cast<MH_STATUS>(status[i])));
             }
+            if (!g_killRet.load()) printf("[h2] unit_die -> actor_died link not verified: deaths are reported as kind=unknown\n");
+            if (!g_loadRet.load()) printf("[h2] game_start_for_map -> game_start link not verified: starts are reported as kind=other\n");
+            if (!g_tickVar.load()) printf("[h2] game_time_get not verified: events carry tick=-\n");
 
             h2::Msg ins = NewMsg("install");
-            ins.Add("on=%s off=%s", on[0] ? on : "-", off[0] ? off : "-");
-            ins.Add("hdr=%d g=%d act=%d kill=%d load=%d reset=%d", g_hdrVar.load() ? 1 : 0, g_gVar.load() ? 1 : 0,
-                    g_actVar.load() ? 1 : 0, g_killRet.load() ? 1 : 0, g_loadRet.load() ? 1 : 0, g_resetRet.load() ? 1 : 0);
+            ins.Add("pass=%d on=%s off=%s", pass, on[0] ? on : "-", off[0] ? off : "-");
+            ins.Add("hdr=%d g=%d act=%d tick=%d kill=%d load=%d reset=%d", g_hdrVar.load() ? 1 : 0, g_gVar.load() ? 1 : 0,
+                    g_actVar.load() ? 1 : 0, g_tickVar.load() ? 1 : 0, g_killRet.load() ? 1 : 0, g_loadRet.load() ? 1 : 0,
+                    g_resetRet.load() ? 1 : 0);
             Send(ins);
             return true;
         }
 
+        void Attach(HMODULE h) {
+            if (!Pass(h, 0)) g_mod = nullptr;  // retried on the next 100 ms slice
+        }
+
         void CheckIntegrity() {
             ModId id;
-            bool bad = !ReadIdentity(g_mod, &id) || !(id == g_id);
-            if (!bad && !ProloguesIntact()) bad = true;
-            if (!bad) return;
-            printf("[h2] halo2.dll identity or hook prologue changed: re-attaching\n");
+            const bool changed = !ReadIdentity(g_mod, &id) || !(id == g_id);
+            bool intact[kHookCount];
+            int enabled, intactCount;
+            CheckPrologues(intact, &enabled, &intactCount);
+            switch (h2::DecideReattach(changed, enabled, intactCount)) {
+            case h2::Reattach::None:
+                return;
+            case h2::Reattach::DropChanged: {
+                // Foreign change of some functions: keep the working hooks and every anchor, drop only the changed ones.
+                char names[160] = {};
+                for (int i = 0; i < kHookCount; i++) {
+                    if (g_on[i] && !intact[i]) {
+                        g_on[i] = false;
+                        g_addr[i] = nullptr;  // a later retry rescans it (and finds nothing while the foreign patch is there)
+                        AppendName(names, sizeof(names), kPatName[i]);
+                    }
+                }
+                printf("[h2] prologue of %s changed by something else: those hooks dropped, the rest kept\n", names);
+                h2::Msg m = NewMsg("hookdrop");
+                m.Add("dropped=%s", names);
+                Send(m);
+                return;
+            }
+            case h2::Reattach::Full:
+                break;
+            }
+            printf("[h2] halo2.dll identity changed or every hook prologue is gone: re-attaching\n");
             HMODULE h = g_mod;
             ForgetModule();
             h2::Msg m = NewMsg("reattach");
@@ -595,6 +757,15 @@ namespace haloap {
         if (++g_tickCount >= 20) {  // ~2 s
             g_tickCount = 0;
             CheckIntegrity();
+            if (!g_mod) return;
+        }
+        // Bounded retries of whatever is still missing (the loader may still have been working at attach time)
+        if (g_retryStage < 2) {
+            ULONGLONG elapsed = GetTickCount64() - g_attachTick;
+            if (elapsed >= (g_retryStage == 0 ? 2000ULL : 10000ULL)) {
+                g_retryStage++;
+                if (Incomplete()) Pass(g_mod, g_retryStage);
+            }
         }
     }
 

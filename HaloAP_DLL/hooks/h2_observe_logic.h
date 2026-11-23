@@ -121,6 +121,21 @@ namespace h2 {
         return k == DeathKind::Kill ? "kill" : k == DeathKind::Erase ? "erase" : "unknown";
     }
 
+    // What the ~2 s integrity check does (QA 7b m2). enabled = hooks we think are installed, intact = of those, how
+    // many still start with MinHook's jump. A reload looks like "identity same, no prologue is ours any more";
+    // a foreign patch on one function looks like "some are intact": drop only those, keep anchors and the rest.
+    enum class Reattach { None, DropChanged, Full };
+    inline Reattach DecideReattach(bool identityChanged, int enabled, int intact) {
+        if (identityChanged) return Reattach::Full;
+        if (enabled <= 0) return Reattach::None;
+        if (intact <= 0) return Reattach::Full;
+        return intact < enabled ? Reattach::DropChanged : Reattach::None;
+    }
+
+    // Shell message coalescing (QA 7b n5): after an id repeats, only every kShellRepeatEvery-th repeat is sent.
+    constexpr uint32_t kShellRepeatEvery = 64;
+    inline bool ShellRepeatDue(uint32_t repeatCount) { return repeatCount && repeatCount % kShellRepeatEvery == 0; }
+
     // E8 rel32 call site at `site` (address of the E8 byte) targets `target`? Reads site[0..4] only.
     inline bool CallTargets(const uint8_t* site, const uint8_t* target) {
         if (site[0] != 0xE8) return false;

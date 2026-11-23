@@ -507,7 +507,9 @@ namespace
             //	g_pipe->Send(msg);
             //}
 
-            haloap::ApplyForcedSkulls();
+            // Not while Halo 2 is the loaded game: the skull mask is MCC-wide, its "in mission" guard is CE-only, and the
+            // Halo 2 build changes nothing in the game (QA 8.H2.7b M1).
+            if (currentHalo1 || !GetModuleHandleA("halo2.dll")) haloap::ApplyForcedSkulls();
 
             tick++;
 

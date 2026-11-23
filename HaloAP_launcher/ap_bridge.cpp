@@ -17,6 +17,7 @@ namespace haloap {
     
     void APBridge::SendCompletionState() {
         if (!m_sendToDll) return;
+        std::lock_guard<std::mutex> sendLock(m_sendStateMutex);
         std::set<int64_t> checked;
         {
             std::lock_guard<std::mutex> lock(m_checkedMutex);
@@ -69,10 +70,12 @@ namespace haloap {
             m_sendToDll("SKULLSANITY: "+ std::to_string(m_skullsanityTier));
         }
         
-        std::lock_guard<std::mutex> lock(m_itemBufferMutex);
-        std::cout << "[ap] replaying " << m_itemBuffer.size() << " buffered items to DLL\n";
-        for (int64_t itemId : m_itemBuffer) {
-            m_sendToDll("ITEM_RECIVED: " + std::to_string(itemId));
+        {
+            std::lock_guard<std::mutex> lock(m_itemBufferMutex);
+            std::cout << "[ap] replaying " << m_itemBuffer.size() << " buffered items to DLL\n";
+            for (int64_t itemId : m_itemBuffer) {
+                m_sendToDll("ITEM_RECIVED: " + std::to_string(itemId));
+            }
         }
         // Also send current completion state
         SendCompletionState();
@@ -402,7 +405,13 @@ namespace haloap {
             std::lock_guard<std::mutex> lock(m_checkedMutex);
             // A different seed than the last connect in this run: the old seed's checks don't apply (m_lastSeed is
             // written below, on this same thread).
-            if (!m_lastSeed.empty() && m_client->get_seed() != m_lastSeed) m_checkedLocations.clear();
+            if (!m_lastSeed.empty() && m_client->get_seed() != m_lastSeed) {
+                m_checkedLocations.clear();
+                // Not replayed to a restarted game. What the running game already got stays unlocked there until MCC
+                // restarts (the DLL has no reset message).
+                std::lock_guard<std::mutex> itemLock(m_itemBufferMutex);
+                m_itemBuffer.clear();
+            }
             auto checked = m_client->get_checked_locations();
             for (int64_t locId : checked) {
                 m_checkedLocations.insert(locId);

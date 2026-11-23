@@ -105,13 +105,33 @@ namespace haloap {
     }
 
     namespace {
-        // __try needs a function without C++ objects needing unwind: plain pointers only.
-        size_t SafeCount(const uint8_t* data, size_t len, const ParsedPattern* pat, size_t maxHits, size_t* first) {
+        // The whole walk (PE headers, section table, section bytes) is under SEH: this runs unpinned, so the module
+        // may be unmapped under us. __try needs a function without C++ objects needing unwind: plain pointers only.
+        // Returns false on a fault. *hits counts to 2; *found = address of the first match.
+        bool SafeScan(HMODULE module, const ParsedPattern* parsed, size_t* hits, uint8_t** found) {
             __try {
-                return CountMatches(data, len, *pat, maxHits, first);
+                auto dos = (IMAGE_DOS_HEADER*)module;
+                if (dos->e_magic != IMAGE_DOS_SIGNATURE) return true;
+                auto nt = (IMAGE_NT_HEADERS*)((uint8_t*)module + dos->e_lfanew);
+                if (nt->Signature != IMAGE_NT_SIGNATURE) return true;
+                uint8_t* base = (uint8_t*)module;
+                const size_t imageSize = nt->OptionalHeader.SizeOfImage;
+                IMAGE_SECTION_HEADER* sec = IMAGE_FIRST_SECTION(nt);
+                for (unsigned i = 0; i < nt->FileHeader.NumberOfSections && *hits < 2; i++, sec++) {
+                    if (!(sec->Characteristics & IMAGE_SCN_MEM_EXECUTE)) continue;
+                    size_t va = sec->VirtualAddress;
+                    size_t size = sec->Misc.VirtualSize ? sec->Misc.VirtualSize : sec->SizeOfRawData;
+                    if (va >= imageSize) continue;
+                    if (size > imageSize - va) size = imageSize - va;
+                    size_t first = 0;
+                    size_t n = CountMatches(base + va, size, *parsed, 2 - *hits, &first);
+                    if (n && *hits == 0) *found = base + va + first;
+                    *hits += n;
+                }
+                return true;
             }
             __except (EXCEPTION_EXECUTE_HANDLER) {
-                return maxHits;  // unreadable: report "ambiguous" so the caller fails closed
+                return false;
             }
         }
     }
@@ -121,28 +141,9 @@ namespace haloap {
         if (!module) return nullptr;
         ParsedPattern parsed = ParsePattern(pattern);
         if (parsed.bytes.empty()) return nullptr;
-
-        auto dos = (IMAGE_DOS_HEADER*)module;
-        if (dos->e_magic != IMAGE_DOS_SIGNATURE) return nullptr;
-        auto nt = (IMAGE_NT_HEADERS*)((uint8_t*)module + dos->e_lfanew);
-        if (nt->Signature != IMAGE_NT_SIGNATURE) return nullptr;
-        uint8_t* base = (uint8_t*)module;
-        const size_t imageSize = nt->OptionalHeader.SizeOfImage;
-
         size_t hits = 0;
         uint8_t* found = nullptr;
-        IMAGE_SECTION_HEADER* sec = IMAGE_FIRST_SECTION(nt);
-        for (unsigned i = 0; i < nt->FileHeader.NumberOfSections && hits < 2; i++, sec++) {
-            if (!(sec->Characteristics & IMAGE_SCN_MEM_EXECUTE)) continue;
-            size_t va = sec->VirtualAddress;
-            size_t size = sec->Misc.VirtualSize ? sec->Misc.VirtualSize : sec->SizeOfRawData;
-            if (va >= imageSize) continue;
-            if (size > imageSize - va) size = imageSize - va;
-            size_t first = 0;
-            size_t n = SafeCount(base + va, size, &parsed, 2 - hits, &first);
-            if (n && hits == 0) found = base + va + first;
-            hits += n;
-        }
+        if (!SafeScan(module, &parsed, &hits, &found)) hits = 2;  // unreadable: report "ambiguous", fail closed
         if (outHits) *outHits = hits >= 2 ? 2 : static_cast<int>(hits);
         return hits == 1 ? found : nullptr;
     }

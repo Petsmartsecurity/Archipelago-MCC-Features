@@ -148,6 +148,19 @@ static void TestClassify() {
     CHECK(std::strcmp(h2::DeathKindName(h2::DeathKind::Unknown), "unknown") == 0);
 }
 
+static void TestReattachDecision() {
+    using h2::Reattach;
+    CHECK(h2::DecideReattach(true, 6, 6) == Reattach::Full);       // identity changed: always a full re-attach
+    CHECK(h2::DecideReattach(true, 0, 0) == Reattach::Full);
+    CHECK(h2::DecideReattach(false, 6, 6) == Reattach::None);      // nothing changed
+    CHECK(h2::DecideReattach(false, 0, 0) == Reattach::None);      // nothing installed: nothing to check
+    CHECK(h2::DecideReattach(false, 6, 0) == Reattach::Full);      // every prologue pristine = a reload
+    CHECK(h2::DecideReattach(false, 1, 0) == Reattach::Full);
+    CHECK(h2::DecideReattach(false, 6, 5) == Reattach::DropChanged);  // a foreign patch on one function
+    CHECK(h2::DecideReattach(false, 6, 1) == Reattach::DropChanged);
+    CHECK(!h2::ShellRepeatDue(0) && !h2::ShellRepeatDue(63) && h2::ShellRepeatDue(64) && h2::ShellRepeatDue(128) && !h2::ShellRepeatDue(65));
+}
+
 static void PutCall(std::vector<uint8_t>& b, size_t at, size_t target) {
     b[at] = 0xE8;
     int32_t rel = static_cast<int32_t>(static_cast<int64_t>(target) - static_cast<int64_t>(at + 5));
@@ -228,6 +241,7 @@ int main() {
     TestValidCode();
     TestClassify();
     TestCallSites();
+    TestReattachDecision();
     TestDatum();
     std::printf("test_h2_observe: %d checks, %d failures\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
