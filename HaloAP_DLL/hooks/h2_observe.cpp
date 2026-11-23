@@ -445,8 +445,14 @@ namespace haloap {
             // ctx is deliberately not touched (QA: only ids 0x10-0x13 are safe to read).
             // Coalescing: the first of a run is sent, then one line per 64 repeats (rep = repeats so far), and the count is
             // flushed when the id changes. Atomics only; a race can lose or duplicate a line, never block.
+            // Pause, quit, revert and restart are the ids the session must see one by one (QA 7b r1): never coalesced.
+            const bool always = msg == 0 || msg == 2 || msg == 3 || msg == 4 || msg == 0xD;
             int32_t prev = g_lastShell.exchange(msg, std::memory_order_relaxed);
-            if (prev != msg) {
+            if (always) {
+                uint32_t rep = g_shellRep.exchange(0, std::memory_order_relaxed);
+                if (rep && prev != INT32_MIN && prev != msg) SendShell(prev, 0, rep, true);
+                SendShell(msg, ret, 0, false);
+            } else if (prev != msg) {
                 uint32_t rep = g_shellRep.exchange(0, std::memory_order_relaxed);
                 if (rep && prev != INT32_MIN) SendShell(prev, 0, rep, true);
                 SendShell(msg, ret, 0, false);
