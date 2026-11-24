@@ -50,7 +50,6 @@ def generate_early(world):
         ce_all = list(missions)
         missions.remove(world.final_mission)
         world.missions = [m for m in missions]
-        print("final Mission: " + world.final_mission)
 
     if h2:
         h2_all = [name for name, data in LEVEL_DATA.items() if data.game == "H2"]
@@ -71,6 +70,8 @@ def generate_early(world):
         if h2 and world.goal_game != "H2":
             world.h2_final_mission = ""
             world.h2_missions = h2_all
+    if world.final_mission:
+        print("final Mission: " + world.final_mission)  # after goal_mode, which may demote it (QA 6.G minor)
 
     # every enabled game's non-final missions, CE first: the starting mission is drawn from all of them
     candidates = world.missions + world.h2_missions
