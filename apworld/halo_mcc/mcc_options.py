@@ -215,6 +215,25 @@ class TrapPercentage(Range):
     default = 20
 
 
+class GoalMode(Choice):
+    """
+    How the run is won when more than one Halo game is enabled (for example Halo CE and Halo 2). With a single game
+    enabled both choices are identical: beating that game's final mission wins the run.
+
+    per_game:  every enabled game has its own final mission (ce_final_mission, h2_final_mission). Beating a game's final
+               mission finishes THAT game: all of its checks that you have not found yet are sent out to the multiworld
+               at once, as if you had collected them. The run is won when every enabled game is finished.
+    one_final: all games' checks and missions are pooled and ONE final mission, drawn at random from the enabled games'
+               final missions, is the only goal. The other games' final missions become ordinary missions (unlocked
+               by their Access item, with their normal checks) and beating them does not count towards the goal.
+    """
+    display_name = "Goal Mode"
+    visibility = _H2_VISIBILITY  # only matters with more than one game; shown together with the Halo 2 options
+    option_per_game = 0
+    option_one_final = 1
+    default = 0
+
+
 @dataclass
 class MCCOptions(PerGameCommonOptions):
     skullsanity: SkullSanity
@@ -230,5 +249,6 @@ class MCCOptions(PerGameCommonOptions):
     ce_final_mission: CeFinalMission
     h2_enabled: H2Enabled
     h2_final_mission: H2FinalMission
+    goal_mode: GoalMode
     effect_items: EffectItems
     trap_percentage: TrapPercentage

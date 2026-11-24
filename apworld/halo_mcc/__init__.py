@@ -24,10 +24,11 @@ class MCCWorld(World):
     ##same thing as items but for locations
     location_name_to_id = locations.get_location_name_to_id()
     starting_mission:str
-    final_mission:str        # CE final mission, "" when CE is off
-    h2_final_mission:str     # Halo 2 final mission, "" when Halo 2 is off
-    missions:list[str]       # CE non-final missions
-    h2_missions:list[str]    # Halo 2 non-final missions
+    final_mission:str        # CE final mission, "" when CE is off or its final is not a goal (one_final)
+    h2_final_mission:str     # Halo 2 final mission, "" when Halo 2 is off or its final is not a goal (one_final)
+    missions:list[str]       # CE non-final missions (every CE mission when CE's final is not a goal: goal_mode one_final)
+    h2_missions:list[str]    # Halo 2 non-final missions (likewise)
+    goal_game:str            # one_final: "CE" / "H2", the game whose final mission is the goal; "" = per_game
     ceskulls: list[str] = []
 
     #creates all logic for locations, entrances, and goal
@@ -72,4 +73,8 @@ class MCCWorld(World):
             "h2_enabled": int(bool(self.options.h2_enabled.value)),
             "h2_final_mission": self.h2_final_mission,
             "effect_items": int(items.effects_enabled(self)),
+            # goal_mode (PLAN 6.G): 0 per_game, 1 one_final. A seed without the key is per_game. one_final: goal_game is the
+            # game whose final mission wins ("CE" / "H2"); the other game's final_mission key is "" (it is an ordinary mission).
+            "goal_mode": self.options.goal_mode.value,
+            "goal_game": self.goal_game,
         }

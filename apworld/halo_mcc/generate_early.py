@@ -2,7 +2,7 @@ import os
 
 from Options import OptionError
 
-from .mcc_options import EXPERIMENTAL_ENV
+from .mcc_options import EXPERIMENTAL_ENV, GoalMode
 
 from .data.levels import LEVEL_DATA
 from .data.skulls import *
@@ -24,8 +24,9 @@ def generate_early(world):
     world.h2_final_mission = ""
     world.missions = []
     world.h2_missions = []
-    # every enabled game's non-final missions, CE first: the starting mission is drawn from all of them
-    candidates = []
+    world.goal_game = ""   # "" = per_game; one_final: the game whose final mission is the only goal ("CE" / "H2")
+    ce_all: list[str] = []
+    h2_all: list[str] = []
 
     if ce:
         missions = [
@@ -46,9 +47,9 @@ def generate_early(world):
         else:
             index = world.options.ce_final_mission - 1
             world.final_mission = missions[index]
+        ce_all = list(missions)
         missions.remove(world.final_mission)
         world.missions = [m for m in missions]
-        candidates += missions
         print("final Mission: " + world.final_mission)
 
     if h2:
@@ -58,8 +59,21 @@ def generate_early(world):
         else:
             world.h2_final_mission = h2_all[world.options.h2_final_mission - 2]
         world.h2_missions = [m for m in h2_all if m != world.h2_final_mission]
-        candidates += world.h2_missions
 
+    # goal_mode (PLAN 6.G). per_game changes nothing here. one_final: with two games one final is drawn (the only RNG use of
+    # this option: a CE-only or H2-only seed draws nothing, so it stays identical to per_game); the other game's final
+    # mission becomes an ordinary mission: world.<game>_final_mission "" (no final of that game), the mission listed with the rest.
+    if world.options.goal_mode == GoalMode.option_one_final:
+        world.goal_game = world.random.choice(["CE", "H2"]) if ce and h2 else ("CE" if ce else "H2")
+        if ce and world.goal_game != "CE":
+            world.final_mission = ""
+            world.missions = ce_all
+        if h2 and world.goal_game != "H2":
+            world.h2_final_mission = ""
+            world.h2_missions = h2_all
+
+    # every enabled game's non-final missions, CE first: the starting mission is drawn from all of them
+    candidates = world.missions + world.h2_missions
     world.starting_mission = world.random.choice(candidates)
 
     if world.options.skullsanity.value >=2 and ce:

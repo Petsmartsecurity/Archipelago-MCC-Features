@@ -160,12 +160,137 @@ static void TestKillTrackerIgnoresH2() {
     CHECK(k.OnEvent(e).empty() && k.Count() == 0);
 }
 
+static void TestGameOfLocation() {
+    CHECK(GameProgress::GameOfLocation(101000) == Game::CE && GameProgress::GameOfLocation(110011) == Game::CE);
+    CHECK(GameProgress::GameOfLocation(199999) == Game::CE && GameProgress::GameOfLocation(100000) == Game::CE);
+    CHECK(GameProgress::GameOfLocation(202000) == Game::H2 && GameProgress::GameOfLocation(215013) == Game::H2);
+    CHECK(GameProgress::GameOfLocation(299999) == Game::H2);
+    CHECK(!GameProgress::GameOfLocation(300000) && !GameProgress::GameOfLocation(699999));  // H3.. reserved, not known yet
+    CHECK(!GameProgress::GameOfLocation(90001) && !GameProgress::GameOfLocation(81001) && !GameProgress::GameOfLocation(1));  // items
+    CHECK(!GameProgress::GameOfLocation(0) && !GameProgress::GameOfLocation(-5));
+    // kill / species / infection IDs: 1e9 + game*1e7 + (100|200 + mission)*1e4 + k
+    CHECK(GameProgress::GameOfLocation(1010010000LL + 1) == Game::CE);        // kill milestone, mission 1
+    CHECK(GameProgress::GameOfLocation(1'010'000'000LL) == Game::CE && GameProgress::GameOfLocation(1'019'999'999LL) == Game::CE);
+    CHECK(GameProgress::GameOfLocation(1'020'000'000LL) == Game::H2 && GameProgress::GameOfLocation(1'029'999'999LL) == Game::H2);
+    CHECK(!GameProgress::GameOfLocation(1'000'000'000LL) && !GameProgress::GameOfLocation(1'009'999'999LL));
+    CHECK(!GameProgress::GameOfLocation(1'030'000'000LL) && !GameProgress::GameOfLocation(1'070'000'000LL));
+    // agrees with the real kill IDs the launcher produces
+    CHECK(GameProgress::GameOfLocation(MilestoneId(10, 7)) == Game::CE && GameProgress::GameOfLocation(InfectionId(3, 2)) == Game::CE);
+}
+
+static const std::set<int64_t> kMissing = { 101000, 102011, 1'010'110'005LL, 202000, 215011, 1'020'110'001LL, 1, 300001 };
+
+static json Both(int mode, const char* goalGame = nullptr) {
+    json j = { {"ce_enabled", 1}, {"h2_enabled", 1}, {"final_mission", "The Maw"}, {"h2_final_mission", "The Great Journey"} };
+    if (mode >= 0) j["goal_mode"] = mode;
+    if (goalGame) j["goal_game"] = goalGame;
+    if (goalGame && mode == 1) { (std::string(goalGame) == "CE" ? j["h2_final_mission"] : j["final_mission"]) = ""; }
+    return j;
+}
+
+static void TestGoalModes() {
+    // per_game, both games: the first final releases that game's missing locations only; GOAL when both are flagged
+    for (int mode : { -1, 0 }) {   // -1 = key absent (older seed)
+        GameProgress p;
+        p.Configure(Both(mode));
+        CHECK(p.Mode() == GoalMode::PerGame);
+        auto d = p.Decide({}, kMissing);
+        CHECK(!d.sendGoal && d.release.empty());
+        d = p.Decide({ "CE" }, kMissing);
+        CHECK(!d.sendGoal && d.release == (std::vector<int64_t>{ 101000, 102011, 1'010'110'005LL }));
+        d = p.Decide({ "H2" }, kMissing);
+        CHECK(!d.sendGoal && d.release == (std::vector<int64_t>{ 202000, 215011, 1'020'110'001LL }));
+        d = p.Decide({ "CE", "H2" }, kMissing);
+        CHECK(d.sendGoal && d.release.empty());
+        // idempotent: nothing missing = nothing to send; same input = same answer
+        CHECK(p.Decide({ "CE" }, {}).release.empty());
+        CHECK(p.Decide({ "CE" }, kMissing).release == p.Decide({ "CE" }, kMissing).release);
+    }
+    // per_game, one game: never releases, GOAL exactly as before
+    GameProgress c;
+    c.Configure(json{ {"ce_enabled", 1}, {"h2_enabled", 0}, {"final_mission", "The Maw"}, {"h2_final_mission", ""}, {"goal_mode", 0} });
+    CHECK(c.Decide({}, kMissing).release.empty() && !c.Decide({}, kMissing).sendGoal);
+    auto cd = c.Decide({ "CE" }, kMissing);
+    CHECK(cd.sendGoal && cd.release.empty());
+    GameProgress old;   // old seed, no keys at all
+    old.Configure(json{ {"final_mission", "Keyes"} });
+    CHECK(old.Decide({ "CE" }, kMissing).sendGoal && old.Decide({ "CE" }, kMissing).release.empty());
+    GameProgress h;
+    h.Configure(json{ {"ce_enabled", 0}, {"h2_enabled", 1}, {"h2_final_mission", "Regret"}, {"goal_mode", 0} });
+    CHECK(h.Decide({ "H2" }, kMissing).sendGoal && h.Decide({ "H2" }, kMissing).release.empty());
+    // one_final, one game: identical to per_game with one game (even if goal_game is absent or wrong)
+    for (const char* gg : { (const char*)nullptr, "CE", "H2" }) {
+        GameProgress o;
+        json j = { {"ce_enabled", 1}, {"h2_enabled", 0}, {"final_mission", "The Maw"}, {"h2_final_mission", ""}, {"goal_mode", 1} };
+        if (gg) j["goal_game"] = gg;
+        o.Configure(j);
+        CHECK(o.DllMessages({}) == (Msgs{ "COMPLETED:", "FINAL_MISSION:9" }));
+        auto od = o.Decide({}, kMissing);
+        CHECK(!od.sendGoal && od.release.empty());
+        od = o.Decide({ "CE" }, kMissing);
+        CHECK(od.sendGoal && od.release.empty());
+        CHECK(o.OnMissionComplete(*GameProgress::ByCode("d40")) == Game::CE);
+    }
+}
+
+static void TestOneFinal() {
+    // CE is the goal game: the Maw wins; the Halo 2 final is an ordinary mission (no flag, no release, no DLL final)
+    GameProgress ce;
+    ce.Configure(Both(1, "CE"));
+    CHECK(ce.Mode() == GoalMode::OneFinal);
+    CHECK(ce.OnMissionComplete(*GameProgress::ByCode("d40")) == Game::CE);
+    CHECK(!ce.OnMissionComplete(*GameProgress::ByCode("08b_deltacontrol")));
+    CHECK(ce.DllMessages({ 215000 }) == (Msgs{ "COMPLETED:", "FINAL_MISSION:9", "H2_COMPLETED:15", "H2_FINAL:0" }));
+    CHECK(!ce.GoalReached({}) && !ce.GoalReached({ "H2" }) && ce.GoalReached({ "CE" }));
+    auto d = ce.Decide({ "H2" }, kMissing);       // a stray H2 flag changes nothing
+    CHECK(!d.sendGoal && d.release.empty());
+    d = ce.Decide({ "CE" }, kMissing);            // winning sends GOAL only, never a release
+    CHECK(d.sendGoal && d.release.empty());
+    // H2 is the goal game: the Maw is ordinary (DLL gets FINAL_MISSION:-1 so it unlocks by its item)
+    GameProgress h2;
+    h2.Configure(Both(1, "H2"));
+    CHECK(!h2.OnMissionComplete(*GameProgress::ByCode("d40")));
+    CHECK(h2.OnMissionComplete(*GameProgress::ByCode("08b_deltacontrol")) == Game::H2);
+    CHECK(h2.DllMessages({})[1] == "FINAL_MISSION:-1" && h2.DllMessages({})[3] == "H2_FINAL:15");
+    CHECK(!h2.GoalReached({ "CE" }) && h2.GoalReached({ "H2" }) && !h2.GoalReached({ "CE" }));
+    CHECK(h2.Decide({ "CE" }, kMissing).release.empty());
+    // even if slot_data still named both finals, the non-goal game's final does not count
+    json both = Both(1, "H2");
+    both["final_mission"] = "The Maw";
+    GameProgress h2b;
+    h2b.Configure(both);
+    CHECK(!h2b.OnMissionComplete(*GameProgress::ByCode("d40")) && h2b.DllMessages({})[1] == "FINAL_MISSION:-1");
+    // both games on, goal_game missing / wrong / names a disabled game: unreachable, nothing released
+    for (json j : { Both(1), Both(1, "XX"), Both(1, "") }) {
+        GameProgress u;
+        u.Configure(j);
+        CHECK(!u.GoalReached({ "CE", "H2" }) && !u.Decide({ "CE", "H2" }, kMissing).sendGoal && u.Decide({ "CE" }, kMissing).release.empty());
+    }
+    GameProgress off;
+    off.Configure(json{ {"ce_enabled", 1}, {"h2_enabled", 0}, {"final_mission", "The Maw"}, {"goal_mode", 1}, {"goal_game", "H2"} });
+    CHECK(off.GoalReached({ "CE" }));  // one game on: that game is the goal game
+    // an unknown (newer) goal_mode: no goal, no release, no DLL final
+    GameProgress nw;
+    nw.Configure(Both(2));
+    CHECK(nw.Mode() == GoalMode::Unknown && !nw.GoalReached({ "CE", "H2" }) && nw.Decide({ "CE" }, kMissing).release.empty());
+    CHECK(nw.DllMessages({})[1] == "FINAL_MISSION:-1");
+    GameProgress wt;   // wrong type = missing = per_game
+    wt.Configure(json{ {"ce_enabled", 1}, {"final_mission", "The Maw"}, {"goal_mode", "one_final"} });
+    CHECK(wt.Mode() == GoalMode::PerGame && wt.GoalReached({ "CE" }));
+    // before the config is known nothing is decided
+    GameProgress un;
+    CHECK(!un.Decide({ "CE", "H2" }, kMissing).sendGoal && un.Decide({ "CE" }, kMissing).release.empty());
+}
+
 int main() {
     TestTables();
     TestOldSeedAndCeOnly();
     TestH2();
     TestEarlyCompletions();
     TestKillTrackerIgnoresH2();
+    TestGameOfLocation();
+    TestGoalModes();
+    TestOneFinal();
     std::printf("game_progress: %d checks, %d failed\n", g_checks, g_failures);
     return g_failures == 0 ? 0 : 1;
 }

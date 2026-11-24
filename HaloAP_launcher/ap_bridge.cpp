@@ -380,12 +380,23 @@ namespace haloap {
                 std::lock_guard<std::mutex> lock(m_pendingMutex);
                 flags = m_pending.Goals();
             }
-            bool ready;
+            // Decided by GameProgress::Decide (tested in test_game_progress.cpp). The server's own missing list is the source
+            // of truth, so this is idempotent: a reconnect asks again and only what the server still lacks is sent; what was
+            // sent on this connection and is not yet echoed is skipped via m_inFlight. Only after the slot connected (the
+            // early return above), never from the pipe thread.
+            GoalDecision decision;
             {
                 std::lock_guard<std::mutex> lock(m_progressMutex);
-                ready = m_progress.GoalReached(flags);
+                decision = m_progress.Decide(flags, m_client->get_missing_locations());
             }
-            if (ready) m_client->StatusUpdate(APClient::ClientStatus::GOAL);
+            std::list<int64_t> release;
+            for (int64_t id : decision.release)
+                if (m_inFlight.insert(id).second) release.push_back(id);
+            if (!release.empty()) {
+                m_client->LocationChecks(release);
+                std::cout << "[ap] a game's final mission is beaten: sent its " << release.size() << " remaining location check(s)\n";
+            }
+            if (decision.sendGoal) m_client->StatusUpdate(APClient::ClientStatus::GOAL);
         }
     }
 
