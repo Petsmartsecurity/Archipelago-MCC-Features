@@ -18,9 +18,9 @@ KILL_VARIANTS = {
     "off": {},
     "every_kill": {"kill_milestone_interval": 1, "kill_species_checks": True, "kill_infection_interval": 1},
     "25_default_cap": {"kill_milestone_interval": 25},
-    "10_cap10": {"kill_milestone_interval": 10, "kill_milestone_max_percent": 10, "kill_milestone_progression_percent": 80},
+    "10_cap10": {"kill_milestone_interval": 10, "kill_milestone_max_percent": 10, "kill_milestone_progression_percent": 50},
     "100_legendary_inf": {"kill_milestone_interval": 100, "kill_difficulty": "legendary", "kill_infection_interval": 40},
-    "heroic_prog0": {"kill_milestone_interval": 5, "kill_difficulty": "heroic", "kill_milestone_progression_percent": 0,
+    "heroic_prog10": {"kill_milestone_interval": 5, "kill_difficulty": "heroic", "kill_milestone_progression_percent": 10,
                      "kill_infection_interval": 7},
     "skulls_all_kills": {"skullsanity": "all", "kill_milestone_interval": 20, "kill_species_checks": True},
 }
@@ -70,7 +70,7 @@ class TestMixedMultiworlds(MultiworldCase):
             [MCCWorld.game, "APQuest", "Yacht Dice", "Bumper Stickers"],
         ]
         for combo in combos:
-            for name in ("every_kill", "25_default_cap", "heroic_prog0"):
+            for name in ("every_kill", "25_default_cap", "heroic_prog10"):
                 for seed in range(10, 16):
                     acc = "full" if seed % 2 else "minimal"
                     with self.subTest(combo=combo, kills=name, seed=seed, accessibility=acc):

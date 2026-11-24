@@ -11,7 +11,7 @@ from .bases import MCCTestBase
 from .ce_snapshot import snapshot
 
 GOLDEN = json.loads((pathlib.Path(__file__).parent / "ce_golden.json").read_text())
-NEW_SLOT_KEYS = {"ce_enabled", "h2_enabled", "h2_final_mission", "kill_infection_interval"}
+NEW_SLOT_KEYS = {"ce_enabled", "h2_enabled", "h2_final_mission", "kill_infection_interval", "killsanity_version"}
 
 
 class TestCEOnlyUnchanged(unittest.TestCase):

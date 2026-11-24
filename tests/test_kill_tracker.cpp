@@ -88,7 +88,7 @@ static void TestInfectionChecks() {
     // a new run of m1 restarts the infection count
     k.OnMissionLoad("m1");
     CHECK(k.SwarmCount() == 0);
-    CHECK((FeedSwarm(k, 1, 10) == Ids{ InfectionId(1, 10) }) == false);  // already emitted under this config (de-duplicated)
+    CHECK(FeedSwarm(k, 1, 10).empty());  // already emitted under this config (de-duplicated)
     // off by default and when 0
     KillTracker z(Small());
     z.OnMissionLoad("m1");

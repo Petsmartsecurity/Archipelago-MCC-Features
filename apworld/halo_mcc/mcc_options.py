@@ -62,28 +62,31 @@ class KillMilestoneProgressionPercent(Range):
     """
     Milestones above this percent of the mission's measured kill count are still checks, but they are EXCLUDED
     from holding progression items: only filler (and other non-progression items) can be placed there. The kill
-    count restarts every time a mission is started, and a player who skips sections or plays carefully can end a
-    run well below the measured count, so a progression item behind a high milestone could be stranded. The default
-    keeps everything above half of a mission's kills filler-only. Lower numbers are safer; raise it only if
-    everybody in the multiworld plays missions out in full. Only used when kill_milestone_interval is above 0.
+    count restarts every time a mission is started, and the measured count is ONE complete run by one player on
+    Normal; a player who skips sections, rushes, or plays Heroic or Legendary can end a run well below it, and a
+    progression item behind a milestone nobody can reach would block the whole multiworld. So this cannot go above
+    50, and a milestone is also never progression above 80 percent of the smaller of the measured count and the
+    lowest static enemy count of any difficulty (docs/research/h1-per-enemy-checks.md, section 5).
+    Only used when kill_milestone_interval is above 0.
     """
     display_name = "Kill Milestone Progression Percent"
-    range_start = 0
-    range_end = 80
+    range_start = 10
+    range_end = 50
     default = 50
 
 
 class KillDifficulty(Choice):
     """
-    Which difficulty the milestone cap is calibrated for. Only Normal has been measured (real playthroughs on
-    Normal); the other two are PROVISIONAL rules until Heroic / Legendary runs are measured.
+    Which difficulty the milestone cap is calibrated for. Only Normal has been measured (one complete playthrough
+    of each mission on Normal); Heroic and Legendary have no measurement yet, so both rules below are PROVISIONAL.
+    The safe choice is the default, and milestones above kill_milestone_progression_percent never hold progression
+    whatever you choose.
 
-    normal:    The measured Normal count. Reachable on any difficulty of the campaign.
-    heroic:    Provisional: the same measured Normal count (Heroic has not been measured; it spawns more enemies
-               than Normal, so the Normal count is the safe choice).
-    legendary: Provisional: the measured Normal count, scaled down by (Legendary / Normal enemies on the map) in the
-               two missions where Legendary has fewer enemies (Halo CE, The Truth and Reconciliation), never scaled up. It does
-               not yield extra milestones on Legendary until Legendary is measured.
+    normal:    The measured Normal count of each mission. Other difficulties spawn a similar number of enemies, but
+               a few squads are smaller on Legendary, so a Legendary player may end a run below it.
+    heroic:    Provisional: the same measured Normal count.
+    legendary: Provisional: the measured Normal count, scaled down by (Legendary / Normal enemies placed on the map)
+               in the two missions where Legendary has fewer (Halo CE, The Truth and Reconciliation), never up.
     """
     display_name = "Kill Difficulty"
     option_normal = 0

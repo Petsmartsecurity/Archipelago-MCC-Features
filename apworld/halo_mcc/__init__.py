@@ -4,6 +4,8 @@ from .mcc_options import MCCOptions
 from . import regions, locations, items, rules, generate_early, goal
 from typing import Any
 
+KILLSANITY_VERSION = 1  # slot_data feature level; the launcher warns about a seed newer than it supports (compat.h)
+
 class MCCWorld(World):
     """
     yipee
@@ -12,7 +14,9 @@ class MCCWorld(World):
     game = "Halo The Master Chief Collection"
     options_dataclass = MCCOptions
     options: MCCOptions
-    required_client_version = (1, 2, 0)
+    # Raised from upstream's (1, 2, 0): upstream's launcher sends 1.2.0 and is refused by the server (IncompatibleVersion), because it
+    # would connect to a kill seed and never send a kill check. Our launcher sends this version (HaloAP_launcher/compat.h).
+    required_client_version = (1, 2, 10)
     web = MCCWeb()
 
     #connects item names to their ID
@@ -61,6 +65,7 @@ class MCCWorld(World):
             # skull items are CE-only: with CE off the launcher must not force skulls nothing can release (QA 8.H2.6 M2)
             "skullsanity": self.options.skullsanity.value if self.options.ce_enabled else 0,
             "kill_milestone_interval": self.options.kill_milestone_interval.value,
+            "killsanity_version": KILLSANITY_VERSION,
             "kill_infection_interval": self.options.kill_infection_interval.value,
             "kill_species_checks": int(bool(self.options.kill_species_checks.value)),
             "ce_enabled": int(bool(self.options.ce_enabled.value)),

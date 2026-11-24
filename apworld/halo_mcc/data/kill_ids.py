@@ -73,3 +73,13 @@ def infection_ks(swarm_basis: int, interval: int):
     if interval <= 0 or swarm_basis <= 0:
         return range(0)
     return range(interval, milestone_cap(swarm_basis, MAX_PERCENT) + 1, interval)
+
+
+# 80% of min(lowest static per-squad enemy count over all difficulties, measured complete Normal run), per mission:
+# the most a milestone may ask for before it can hold NO progression whatever the player does
+# (docs/research/h1-per-enemy-checks.md section 5; hand-frozen from that table, a test checks 50% of the basis stays below it).
+PROGRESSION_SAFE_CAP = {
+    "The Pillar of Autumn": 100, "Halo (CE)": 109, "The Truth and Reconciliation": 244, "The Silent Cartographer": 115,
+    "Assault on the Control Room": 307, "343 Guilty Spark": 135, "The Library": 248, "Two Betrayals": 303,
+    "Keyes": 251, "The Maw": 148,
+}

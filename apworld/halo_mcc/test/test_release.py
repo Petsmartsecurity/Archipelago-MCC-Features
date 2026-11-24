@@ -94,3 +94,47 @@ class TestApworldPackage(unittest.TestCase):
             self.assertIn("halo_mcc/__init__.py", names)
             self.assertIn("halo_mcc/data/halo_ce_kill_data.py", names)
             self.assertFalse([n for n in names if "/test/" in n or n.endswith(".pyc")])
+
+
+class TestCompatibility(unittest.TestCase):
+    """QA M1 / M2."""
+
+    def test_progression_range_is_capped_at_50(self):
+        h = MCCWorld.options_dataclass.type_hints["kill_milestone_progression_percent"]
+        self.assertEqual((h.range_start, h.range_end, h.default), (10, 50, 50))
+        with self.assertRaises(Exception):
+            h.from_any(51)
+        with self.assertRaises(Exception):
+            h.from_any(80)
+
+    def test_progression_never_above_study_safe_cap(self):
+        from ..data.halo_ce_kill_data import CE_KILL_BASIS
+        from ..data.kill_ids import PROGRESSION_SAFE_CAP, milestone_cap
+        self.assertEqual(set(PROGRESSION_SAFE_CAP), set(CE_KILL_BASIS))
+        for level, (_, basis, _) in CE_KILL_BASIS.items():
+            # the largest allowed progression cut (50 percent of the basis) is already inside the study's safe cap
+            self.assertLessEqual(milestone_cap(basis, 50), PROGRESSION_SAFE_CAP[level], level)
+            # and the safe cap is 80 percent of something that cannot exceed the measured run
+            self.assertLessEqual(PROGRESSION_SAFE_CAP[level], milestone_cap(basis, 80), level)
+
+    def test_safe_cap_binds_when_it_is_lower(self):
+        """If a mission's safe cap were below the option's cut, the safe cap decides which milestones may hold progression."""
+        from unittest import mock
+        from .. import locations
+        from BaseClasses import LocationProgressType
+        from .ce_snapshot import build
+        low = dict(locations.PROGRESSION_SAFE_CAP)
+        low["The Pillar of Autumn"] = 20
+        with mock.patch.dict(locations.PROGRESSION_SAFE_CAP, low), contextlib.redirect_stdout(io.StringIO()):
+            mw = build({"kill_milestone_interval": 5}, 1)
+        for loc in mw.get_locations(1):
+            if loc.name.startswith("The Pillar of Autumn - ") and loc.name.endswith(" Kills"):
+                k = int(loc.name.rsplit(" - ", 1)[1].split()[0])
+                self.assertEqual(loc.progress_type == LocationProgressType.EXCLUDED, k > 20, loc.name)
+
+    def test_client_version_and_slot_data(self):
+        self.assertEqual(MCCWorld.required_client_version, (1, 2, 10))
+        self.assertGreater(MCCWorld.required_client_version, (1, 2, 0))  # upstream's launcher sends 1.2.0: refused
+        with contextlib.redirect_stdout(io.StringIO()):
+            mw = build({}, 1)
+        self.assertEqual(mw.worlds[1].fill_slot_data()["killsanity_version"], 1)

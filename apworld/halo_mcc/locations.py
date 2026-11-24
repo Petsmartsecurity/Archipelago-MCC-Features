@@ -4,7 +4,7 @@ from .data.halo_ce_location_data import CE_LOCATION_DATA
 from .data.halo2_location_data import H2_CHAPTERS
 from .data.halo_ce_kill_data import CE_KILL_DATA, CE_KILL_COUNTS, CE_KILL_BASIS
 from .data.kill_ids import (basis_for, datapackage_milestone_max_k, infection_id, infection_ks, infection_name,
-                            milestone_cap, milestone_id, milestone_ks, milestone_name, MAX_PERCENT)
+                            milestone_cap, milestone_id, PROGRESSION_SAFE_CAP, milestone_ks, milestone_name, MAX_PERCENT)
 from .data.levels import LEVEL_DATA
 
 #create our own location object that gets everything from the base location object and change game
@@ -79,7 +79,7 @@ def create_locations(world):
                 loc = MCCLocation(world.player, milestone_name(level, k), milestone_id(mission_no, k), region)
                 # The per-mission count restarts every run, and a player who skips sections ends below the measured
                 # count, so milestones above `progression` percent hold no progression (filler only; QA 5.4 M1)
-                if k > milestone_cap(count, progression):
+                if k > min(milestone_cap(count, progression), PROGRESSION_SAFE_CAP[level]):
                     loc.progress_type = LocationProgressType.EXCLUDED
                 region.locations.append(loc)
             # Flood infection forms: only missions with swarm data; never progression (the numbers vary with play style)

@@ -1,4 +1,5 @@
 #include "ap_bridge.h"
+#include "compat.h"
 #include "data/chapter_map.h"
 #include "shared/common.h"
 #include "data/kill_map.h"
@@ -48,7 +49,7 @@ namespace haloap {
                 std::lock_guard<std::mutex> lock(m_checkedMutex);  // order: m_killMutex -> m_checkedMutex
                 if (m_checkedLocations.count(id)) continue;
             }
-            std::cout << "[ap] kill check earned: " << id << "\n";
+            std::cout << "[ap] kill check queued (a slot location, not yet sent): " << id << "\n";
             SendLocation(id, /*notifyDll=*/false);
         }
     }
@@ -407,7 +408,7 @@ namespace haloap {
         // ConnectSlot params: slot name, password, items-handling flags, tags, version
         // Items handling 0b111 = all items (local, starting inventory, world items).
         std::list<std::string> tags;  // no special tags for now
-        m_client->ConnectSlot(m_slot, m_password, 0b111, tags, { 1, 2, 0 });
+        m_client->ConnectSlot(m_slot, m_password, 0b111, tags, { kClientVersionMajor, kClientVersionMinor, kClientVersionBuild });
     }
 
     void APBridge::OnSlotConnected(const nlohmann::json& slotData) {
@@ -461,6 +462,25 @@ namespace haloap {
             }
             for (Game g : earlyGoals) m_pending.SetGoalReached(GameTag(g));
             m_goalRequested.store(true);  // re-evaluated (and, if reached, resent: idempotent on the server) on every connect
+        }
+        // Seed / launcher compatibility (QA M2): the server already refuses a launcher older than the apworld's
+        // required_client_version; this warns about a seed that predates, or is newer than, this launcher's kill support.
+        {
+            int ver = -1;
+            if (slotData.contains("killsanity_version") && slotData["killsanity_version"].is_number_integer()) {
+                ver = slotData["killsanity_version"].get<int>();
+            }
+            switch (CheckSeedCompat(ver)) {
+            case SeedCompat::Missing:
+                std::cerr << "[ap] WARNING: this seed has no killsanity_version: it was not generated with the killsanity apworld, so kill checks will not work.\n";
+                break;
+            case SeedCompat::Newer:
+                std::cerr << "[ap] WARNING: this seed needs a newer HaloAP launcher (killsanity_version " << ver << " > "
+                          << kKillsanityVersion << "): kill checks may not work. Get the launcher from the seed host's package.\n";
+                break;
+            case SeedCompat::Ok:
+                break;
+            }
         }
         // Kill options from slot data (after Bind so queued kill checks land in this seed's pending file).
         // Missing keys = 0 / off (a seed from an older apworld has no kill checks).

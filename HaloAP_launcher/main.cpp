@@ -7,6 +7,7 @@
 #include <shellapi.h>
 #include "shared/common.h"
 #include "ap_bridge.h"
+#include "compat.h"
 #include "pipe_server.h"
 #include <fstream>
 
@@ -51,14 +52,8 @@ int main() {
 
 	// 1. Prompt for AP connection info.
 	std::string serverUri = PromptLine("Server address", "ws://localhost:38281");
-	if (serverUri.find("://") == std::string::npos) {
-		if (serverUri.find("localhost") != std::string::npos || 
-			serverUri.find("127.0.0.1") != std::string::npos) {
-			serverUri = "ws://" + serverUri;
-		} else {
-			serverUri = "wss://" + serverUri;
-		}
-	}
+	// A typed scheme is kept; no scheme: apclientpp tries wss:// then ws:// itself (compat.h)
+	serverUri = haloap::NormalizeServerAddress(serverUri);
 
 	std::string slot = PromptLine("Slot name");
 	while (slot.empty()) {
