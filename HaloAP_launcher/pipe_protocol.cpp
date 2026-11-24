@@ -143,6 +143,46 @@ namespace haloap {
         return e;
     }
 
+    std::optional<SwarmEvent> ParseSwarmEvent(std::string_view message) {
+        auto rest = AfterPrefix(message, "SWARM: ");
+        if (!rest) return std::nullopt;
+        std::string_view r = Trim(*rest);
+        constexpr int N = 8;
+        static const std::string_view keys[N] = { "ah", "unit", "enc", "sq", "var", "ekf", "members", "tid" };
+        int64_t vals[N] = {};
+        bool seen[N] = {};
+        while (!r.empty()) {
+            size_t sp = r.find(' ');
+            std::string_view tok = r.substr(0, sp);
+            r = (sp == std::string_view::npos) ? std::string_view() : r.substr(sp + 1);
+            if (tok.empty()) return std::nullopt;  // double space
+            size_t eq = tok.find('=');
+            if (eq == std::string_view::npos) return std::nullopt;
+            std::string_view key = tok.substr(0, eq);
+            int idx = -1;
+            for (int i = 0; i < N; ++i) if (keys[i] == key) idx = i;
+            if (idx < 0 || seen[idx]) return std::nullopt;
+            if (!ParseNum(tok.substr(eq + 1), vals[idx])) return std::nullopt;
+            seen[idx] = true;
+        }
+        for (bool s : seen) if (!s) return std::nullopt;
+        auto u32 = [](int64_t v) { return v >= 0 && v <= 0xFFFFFFFFll; };
+        if (!u32(vals[0]) || !u32(vals[1]) || !u32(vals[4]) || !u32(vals[7])) return std::nullopt;
+        if (vals[2] < -1 || vals[2] > 65535 || vals[3] < -1 || vals[3] > 65535) return std::nullopt;
+        if (vals[5] < 0 || vals[5] > 0xFF) return std::nullopt;
+        if (vals[6] < -1 || vals[6] > 32767) return std::nullopt;
+        SwarmEvent e{};
+        e.ah = static_cast<uint32_t>(vals[0]);
+        e.unit = static_cast<uint32_t>(vals[1]);
+        e.enc = static_cast<int>(vals[2]);
+        e.sq = static_cast<int>(vals[3]);
+        e.var = static_cast<uint32_t>(vals[4]);
+        e.ekf = static_cast<uint32_t>(vals[5]);
+        e.members = static_cast<int>(vals[6]);
+        e.tid = static_cast<uint32_t>(vals[7]);
+        return e;
+    }
+
     std::optional<int> ParseChapter(std::string_view message) {
         auto rest = AfterPrefix(message, "CHAPTER:");
         if (!rest) return std::nullopt;

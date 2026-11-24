@@ -196,6 +196,16 @@ namespace haloap {
             if (m_telemetry) m_telemetry->H2(message.substr(4));
             return true;
         }
+        if (message.rfind("SWARM: ", 0) == 0) {
+            // Log-only (PLAN 5.7): telemetry line, never the kill tracker, locations or goal.
+            if (auto sw = ParseSwarmEvent(message)) {
+                if (m_telemetry) m_telemetry->Swarm(m_mission, *sw);
+            } else {
+                if (m_telemetry) m_telemetry->Rejected();
+                std::cerr << "[ap] malformed SWARM message ignored\n";
+            }
+            return true;
+        }
         if (message.rfind("HELLO", 0) == 0) {
             // The DLL sends HELLO once when its pipe connects; a second HELLO means it reconnected.
             NotePipeState(true);

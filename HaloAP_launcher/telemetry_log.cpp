@@ -163,6 +163,15 @@ namespace haloap {
         WriteLine("h2", ",\"msg\":" + JsonString(text));
     }
 
+    void TelemetryLog::Swarm(const std::string& mission, const SwarmEvent& e) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        WriteLine("swarm", ",\"mission\":" + JsonString(mission) + ",\"enc\":" + std::to_string(e.enc)
+            + ",\"sq\":" + std::to_string(e.sq) + ",\"variant\":" + std::to_string(e.var & 0xFFFFu)
+            + ",\"var_handle\":" + JsonString(HexU32(e.var, 8)) + ",\"ah\":" + JsonString(HexU32(e.ah, 8))
+            + ",\"unit\":" + JsonString(HexU32(e.unit, 8)) + ",\"ekf\":" + JsonString(HexU32(e.ekf, 2))
+            + ",\"members\":" + std::to_string(e.members) + ",\"tid\":" + std::to_string(e.tid));
+    }
+
     void TelemetryLog::Death(const std::string& mission, const AiEvent& e) { Event(e, "death", mission); }
     void TelemetryLog::Erase(const std::string& mission, const AiEvent& e) { Event(e, "erase", mission); }
 

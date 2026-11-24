@@ -12,7 +12,8 @@
 // What the signatures pin, so that an MCC update which moves them makes install fail instead of misreading:
 //   actor size 0x66C, actor +0x28 (encounter) and +0x4C (variant)  -> kActorDiedPattern
 //   scenario +0x42C, encounter size 0x58, enc +4/+6, squad size 0x20 (shl 5), squad +0x16/+0x18 -> kAiCountPattern
-// NOT pinned (checked only by telemetry plausibility): actor +0x2E squad, +0x30 platoon, +0x06 flags, +0x10 unit,
+//   object header size 0xC / +8, swarm actor handle obj+0x1FC, actor +0x28/+0x2E -> kUnitDeathPattern
+// NOT pinned (checked only by telemetry plausibility): swarm member count actor +0x14, actor +0x2E squad, +0x30 platoon, +0x06 flags, +0x10 unit,
 // encounter +0x18/+0x28 living/total, object header/pool layout and obj+0xF6 kill flags.
 namespace haloap {
 
@@ -36,11 +37,30 @@ namespace haloap {
             "0F BF D0 48 C1 E2 05 48 03 15 ? ? ? ? 85 C9 74 ? 83 F9 01 74 ? 0F BF 42 1A 0F BF 4A 18 2B C8 44 0F 49 "
             "D1 EB ? 44 0F BF 52 1A EB ? 44 0F BF 52 18 0F BF 5A 16";
 
+        // unit_death(unit, feign, p3, p4) (0xb04564): the death handler of every unit; log-only swarm hook (PLAN 5.7). 314 bytes, from
+        // the prologue through the swarm-actor branch (distinct from its near copy 0xb04990 by the prologue).
+        // x64 ABI: rcx = unit handle, dl = feign flag (dl != 0 -> revivable "feign death", not a real death), r8/r9 = out pointers
+        // the original only passes on; no stack arguments; returns void. Pins obj header size 0xC / +8, obj+0x1FC (swarm actor),
+        // actor size 0x66C and the actor +0x28/+0x2E reads done right before swarm_member_removed (0xc044c8).
+        const char* kUnitDeathPattern =
+            "48 89 5C ? ? 48 89 6C ? ? 48 89 74 ? ? 57 41 54 41 55 41 56 41 57 48 83 EC 20 48 8B 35 ? ? ? ? 45 33 ED 48 "
+            "8B 1D ? ? ? ? 41 83 CC FF 48 83 C3 34 44 0F B7 D1 4D 8B F1 8B F9 48 63 46 34 4D 8B F8 4B 8D 2C 52 48 C1 E5 "
+            "02 48 03 C5 4C 63 54 30 08 49 03 DA 45 3B D4 49 0F 44 DD 84 D2 0F 85 ? ? ? ? B2 01 66 44 89 AB 04 04 00 00 "
+            "8B CF E8 ? ? ? ? 8B 8B F8 01 00 00 41 3B CC 74 ? E8 ? ? ? ? 48 8B 35 ? ? ? ? 44 89 A3 F8 01 00 00 8B 8B C0 "
+            "01 00 00 41 3B CC 74 ? 0F B7 C1 48 69 D0 6C 06 00 00 48 8B 05 ? ? ? ? 4C 63 40 34 48 03 C2 4C 03 C0 41 0F B7 "
+            "40 28 66 89 83 18 03 00 00 41 0F B7 40 2E 66 89 83 1A 03 00 00 E8 ? ? ? ? 48 8B 35 ? ? ? ? 44 89 A3 C0 01 00 "
+            "00 8B 8B C8 01 00 00 41 3B CC 74 ? 0F B7 C1 48 69 D0 6C 06 00 00 48 8B 05 ? ? ? ? 4C 63 40 34 48 03 C2 4C 03 "
+            "C0 8B D7 41 0F B7 40 28 66 89 83 18 03 00 00 41 0F B7 40 2E 66 89 83 1A 03 00 00 E8 ? ? ? ? 48 8B 35 ? ? ? ? "
+            "44 89 A3 C8 01 00 00";
+
         // RIP-relative loads inside the matched functions: (offset from function start, first 3 opcode bytes).
         struct RipLoad { size_t offset; uint8_t op[3]; };
         constexpr RipLoad kActorsFromDied     = { 0x18, { 0x48, 0x8B, 0x05 } };  // mov rax,[actors]
         constexpr RipLoad kObjHeadersFromDied = { 0x58, { 0x4C, 0x8B, 0x35 } };  // mov r14,[object headers]
         constexpr RipLoad kObjPoolFromDied    = { 0x62, { 0x48, 0x8B, 0x3D } };  // mov rdi,[object pool]
+        constexpr RipLoad kObjHeadersFromUnit = { 0x1C, { 0x48, 0x8B, 0x35 } };  // mov rsi,[object headers] (== FromDied)
+        constexpr RipLoad kObjPoolFromUnit    = { 0x26, { 0x48, 0x8B, 0x1D } };  // mov rbx,[object pool]    (== FromDied)
+        constexpr RipLoad kActorsFromUnit     = { 0xFC, { 0x48, 0x8B, 0x05 } };  // mov rax,[actors]         (== FromDied)
         constexpr RipLoad kScenarioFromCnt    = { 0x29, { 0x48, 0x8B, 0x0D } };  // mov rcx,[scenario]
         constexpr RipLoad kEncountersFromCnt  = { 0x5B, { 0x48, 0x8B, 0x05 } };  // mov rax,[encounters]
         constexpr RipLoad kSquadsFromCnt      = { 0x97, { 0x48, 0x03, 0x15 } };  // add rdx,[squads]
@@ -53,14 +73,19 @@ namespace haloap {
         constexpr int kEncFirstSquad = 0x04, kEncSquadCount = 0x06, kEncTotal = 0x18, kEncLiving = 0x28;
         constexpr int kSquadTotal = 0x16, kSquadLiving = 0x18;
         constexpr int kScenarioEncounterCount = 0x42C;
+        constexpr int kObjSwarmActor = 0x1FC;     // obj+0x1FC: the unit's swarm actor handle (-1 = none)
+        constexpr int kActorSwarmMembers = 0x14;  // swarm actor: member count (short)
         constexpr int kObjHeaderDataOffset = 0x08, kObjKillFlags = 0xF6;  // 0x20 unit_kill, 0x40 silent
 
         typedef void (*ActorDiedFn)(uint64_t actorHandle);
         typedef void (*ActorEraseFn)(uint64_t actorHandle, uint64_t flag);
+        typedef void (*UnitDeathFn)(uint64_t unit, uint64_t feign, uint64_t p3, uint64_t p4);
 
         // Never cleared on uninstall: a game thread still inside a detour must always reach the original (QA m1).
         ActorDiedFn g_origDied = nullptr;
         ActorEraseFn g_origErase = nullptr;
+        UnitDeathFn g_origUnitDeath = nullptr;
+        void* g_unitDeathTarget = nullptr;
         void* g_diedTarget = nullptr;
         void* g_eraseTarget = nullptr;
         PipeClient* g_pipe = nullptr;
@@ -103,17 +128,25 @@ namespace haloap {
             return array + first + static_cast<size_t>(handle & 0xFFFF) * size;
         }
 
-        // The unit's kill flags, read through the object header table exactly as actor_kill (0xc03f58) does.
-        uint32_t UnitKillFlags(uint32_t unitHandle) {
-            if (unitHandle == 0xFFFFFFFF) return 0xFF;
+        // The object's data through the object header table, exactly as actor_kill (0xc03f58) does. Null if none.
+        // Callers must be inside __try.
+        uint8_t* ObjectData(uint32_t unitHandle) {
+            if (unitHandle == 0xFFFFFFFF) return nullptr;
             uint8_t* headers = *g_objHeadersVar;
             uint8_t* pool = *g_objPoolVar;
-            if (!Plausible(headers) || !Plausible(pool)) return 0xFF;
+            if (!Plausible(headers) || !Plausible(pool)) return nullptr;
             int32_t first = *reinterpret_cast<int32_t*>(headers + kDataArrayFirstElementOffset);
             int32_t dataOffset = *reinterpret_cast<int32_t*>(
                 headers + first + kObjHeaderDataOffset + static_cast<size_t>(unitHandle & 0xFFFF) * kObjHeaderSize);
-            if (dataOffset == -1) return 0xFF;
-            return *reinterpret_cast<uint16_t*>(pool + dataOffset + kObjKillFlags) & 0x60;
+            if (dataOffset == -1) return nullptr;
+            return pool + dataOffset;
+        }
+
+        // The unit's kill flags (0xFF = unreadable).
+        uint32_t UnitKillFlags(uint32_t unitHandle) {
+            uint8_t* obj = ObjectData(unitHandle);
+            if (!obj) return 0xFF;
+            return *reinterpret_cast<uint16_t*>(obj + kObjKillFlags) & 0x60;
         }
 
         void ReadActor(uint32_t actorHandle, ActorInfo* out) {
@@ -133,6 +166,37 @@ namespace haloap {
             }
             __except (EXCEPTION_EXECUTE_HANDLER) {
                 // ok stays as set: actor fields read before a fault in UnitKillFlags are still valid
+            }
+        }
+
+        // A Flood infection form (swarm member) is about to die: the swarm actor's fields, read BEFORE the original removes it.
+        struct SwarmInfo {
+            uint32_t ah = 0xFFFFFFFF, unit = 0xFFFFFFFF, variant = 0xFFFFFFFF;
+            int enc = -1, sq = -1, members = -1;
+            uint32_t killFlags = 0xFF;
+        };
+
+        // True if `unit` has a swarm actor (obj+0x1FC != -1). Reads only; SEH around every read.
+        bool ReadSwarm(uint32_t unit, SwarmInfo* out) {
+            __try {
+                uint8_t* obj = ObjectData(unit);
+                if (!obj) return false;
+                uint32_t actorHandle = *reinterpret_cast<uint32_t*>(obj + kObjSwarmActor);
+                if (actorHandle == 0xFFFFFFFF) return false;
+                out->unit = unit;
+                out->ah = actorHandle;
+                out->killFlags = *reinterpret_cast<uint16_t*>(obj + kObjKillFlags) & 0x60;
+                uint8_t* actor = DataArrayElement(*g_actorsVar, actorHandle, kActorSize);
+                if (!actor) return true;  // still a swarm death; the actor fields stay -1
+                uint32_t encHandle = *reinterpret_cast<uint32_t*>(actor + kActorEncounter);
+                out->enc = encHandle == 0xFFFFFFFF ? -1 : static_cast<int>(encHandle & 0xFFFF);
+                out->sq = *reinterpret_cast<int16_t*>(actor + kActorSquad);
+                out->variant = *reinterpret_cast<uint32_t*>(actor + kActorVariant);
+                out->members = *reinterpret_cast<int16_t*>(actor + kActorSwarmMembers);
+                return true;
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER) {
+                return out->ah != 0xFFFFFFFF;  // fields read before a fault are kept
             }
         }
 
@@ -181,6 +245,24 @@ namespace haloap {
             Report(t_eraseDepth == 0, info, living, total, encLiving, encTotal);
         }
 
+        void ReportSwarm(const SwarmInfo& w) {
+            PipeClient* pipe = g_pipe;
+            if (!pipe || !pipe->IsConnected()) return;
+            char buf[192];
+            snprintf(buf, sizeof(buf), kSwarmEventFormat, w.ah, w.unit, w.enc, w.sq, w.variant, w.killFlags & 0xFF,
+                     w.members, GetCurrentThreadId());
+            pipe->SendAsync(buf);
+        }
+
+        // unit_death(unit, feign, p3, p4). Log-only: reads, calls the original with the untouched arguments, sends one line.
+        // A feign (dl != 0) is not a death; a unit with no swarm actor is not a swarm member; inside actor_erase it is a removal.
+        void DetourUnitDeath(uint64_t unit, uint64_t feign, uint64_t p3, uint64_t p4) {
+            SwarmInfo w;
+            bool swarm = (feign & 0xFF) == 0 && t_eraseDepth == 0 && ReadSwarm(static_cast<uint32_t>(unit), &w);
+            g_origUnitDeath(unit, feign, p3, p4);
+            if (swarm) ReportSwarm(w);
+        }
+
         void DetourActorErase(uint64_t actorHandle, uint64_t flag) {
             ++t_eraseDepth;
             g_origErase(actorHandle, flag);
@@ -199,6 +281,27 @@ namespace haloap {
                 MH_RemoveHook(target);
                 return false;
             }
+            return true;
+        }
+    }
+
+    namespace {
+        // Fail closed: if anything about unit_death does not match (signatures, or its globals differing from the ones
+        // actor_died resolved), the swarm hook is simply not installed. Returns true if installed.
+        bool InstallSwarmHook(HMODULE halo1) {
+            auto unit = static_cast<uint8_t*>(FindPatternInModule(halo1, kUnitDeathPattern));
+            if (!unit) {
+                printf("[hook] (swarm) not installed: unit_death pattern not found\n");
+                return false;
+            }
+            if (ResolveRip(unit, kObjHeadersFromUnit) != g_objHeadersVar || ResolveRip(unit, kObjPoolFromUnit) != g_objPoolVar ||
+                ResolveRip(unit, kActorsFromUnit) != g_actorsVar) {
+                printf("[hook] (swarm) not installed: globals differ from actor_died's\n");
+                return false;
+            }
+            if (!Hook(unit, (void*)DetourUnitDeath, (void**)&g_origUnitDeath, "unit_death")) return false;
+            g_unitDeathTarget = unit;
+            printf("[hook] (swarm) installed: unit_death=%p (log-only)\n", unit);
             return true;
         }
     }
@@ -236,10 +339,16 @@ namespace haloap {
         }
         g_diedTarget = died;
         printf("[hook] (kill) installed: actor_died=%p actor_erase=%p\n", died, erase);
+        InstallSwarmHook(halo1);  // optional and log-only: any failure leaves the kill hook as it is
         return true;
     }
 
     void UninstallKillHook() {
+        if (g_unitDeathTarget) {  // first: stop reporting swarm deaths
+            MH_DisableHook(g_unitDeathTarget);
+            MH_RemoveHook(g_unitDeathTarget);
+            g_unitDeathTarget = nullptr;
+        }
         // Remove actor_died first, so no death is reported after the erase guard is gone.
         if (g_diedTarget) {
             MH_DisableHook(g_diedTarget);

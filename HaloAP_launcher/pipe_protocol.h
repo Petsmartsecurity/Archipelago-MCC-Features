@@ -42,4 +42,13 @@ namespace haloap {
     };
     std::optional<AiEvent> ParseAiEvent(std::string_view message);
 
+    // "SWARM: ah=0x<hex> unit=0x<hex> enc=<int> sq=<int> var=0x<hex> ekf=0x<hex> members=<int> tid=<uint>": a Flood
+    // infection form died (PLAN 5.7, log-only). See shared/ai_event_format.h. All keys required exactly once, any order.
+    struct SwarmEvent {
+        uint32_t ah, unit, var, ekf, tid;
+        int enc, sq;   // -1 = none/unreadable, else 0..65535
+        int members;   // swarm member count before the death: -1 = unreadable, else 0..32767
+    };
+    std::optional<SwarmEvent> ParseSwarmEvent(std::string_view message);
+
 }  // namespace haloap

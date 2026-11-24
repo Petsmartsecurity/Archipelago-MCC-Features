@@ -32,6 +32,10 @@ namespace haloap {
         static constexpr size_t kH2MsgMax = 2048;
         void H2(const std::string& msg);
 
+        // Log-only Flood infection-form death (DLL message "SWARM: ..."): {"ev":"swarm",...}. No squad line, no effect
+        // on anything else (PLAN 5.7).
+        void Swarm(const std::string& mission, const SwarmEvent& e);
+
         // Path of the open file, empty until the first write succeeded.
         std::string Path();
 

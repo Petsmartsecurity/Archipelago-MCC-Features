@@ -245,6 +245,46 @@ static void TestReconcile() {
     std::filesystem::remove(seedB);
 }
 
+static void TestSwarmEvent() {
+    const std::string ok = "ah=0xe1a40021 unit=0x00010002 enc=12 sq=3 var=0xe1a40021 ekf=0x20 members=4 tid=8812";
+    auto k = ParseSwarmEvent("SWARM: " + ok);
+    CHECK(k && k->ah == 0xe1a40021u && k->unit == 0x10002u && k->enc == 12 && k->sq == 3 && k->var == 0xe1a40021u
+        && k->ekf == 0x20 && k->members == 4 && k->tid == 8812u);
+    auto u = ParseSwarmEvent("SWARM: unit=0xffffffff ah=0xffffffff enc=-1 sq=-1 var=0xffffffff ekf=0xff members=-1 tid=0");
+    CHECK(u && u->enc == -1 && u->sq == -1 && u->members == -1 && u->ekf == 0xff && u->tid == 0);
+    CHECK(!ParseSwarmEvent(""));
+    CHECK(!ParseSwarmEvent("SWARM:" + ok));
+    CHECK(!ParseSwarmEvent("KILL: " + ok));
+    CHECK(!ParseSwarmEvent("SWARM: " + ok + " extra=1"));
+    CHECK(!ParseSwarmEvent("SWARM: " + ok + " tid=2"));            // duplicate key
+    CHECK(!ParseSwarmEvent("SWARM: ah=0x1  unit=0x2 enc=1 sq=1 var=0x1 ekf=0x0 members=1 tid=1"));  // double space
+    CHECK(!ParseSwarmEvent("SWARM: ah=0x1 unit=0x2 enc=65536 sq=1 var=0x1 ekf=0x0 members=1 tid=1"));
+    CHECK(!ParseSwarmEvent("SWARM: ah=0x1 unit=0x2 enc=1 sq=1 var=0x1 ekf=0x100 members=1 tid=1"));
+    CHECK(!ParseSwarmEvent("SWARM: ah=0x1 unit=0x2 enc=1 sq=1 var=0x1 ekf=0x0 members=32768 tid=1"));
+    CHECK(!ParseSwarmEvent("SWARM: ah=0x1 unit=0x2 enc=1 sq=1 var=0x1 ekf=0x0 members=-2 tid=1"));
+    CHECK(!ParseSwarmEvent("SWARM: ah=0x100000000 unit=0x2 enc=1 sq=1 var=0x1 ekf=0x0 members=1 tid=1"));
+    for (const char* key : { "ah", "unit", "enc", "sq", "var", "ekf", "members", "tid" }) {
+        std::string msg = "SWARM:";
+        size_t pos = 0;
+        while (pos < ok.size()) {
+            size_t sp = ok.find(' ', pos);
+            std::string tok = ok.substr(pos, sp == std::string::npos ? std::string::npos : sp - pos);
+            if (tok.rfind(std::string(key) + "=", 0) != 0) msg += " " + tok;
+            if (sp == std::string::npos) break;
+            pos = sp + 1;
+        }
+        CHECK(!ParseSwarmEvent(msg));
+    }
+    // A SWARM line can never become a KILL/ERASE event (so it cannot reach the KillTracker), and vice versa.
+    CHECK(!ParseAiEvent("SWARM: " + ok));
+    CHECK(!ParseSwarmEvent("KILL: ah=0x1 unit=0x2 enc=1 sq=2 pl=3 var=0x10 fl=0x01 ekf=0x00 living=1 total=2 el=1 et=2 tid=5"));
+    // The DLL's snprintf format round-trips through the parser.
+    char buf[256];
+    snprintf(buf, sizeof(buf), haloap::kSwarmEventFormat, 0xe1a40021u, 0x10002u, 12, 3, 0xe1a40021u, 0x20u, 4, 8812ul);
+    auto rt = ParseSwarmEvent(buf);
+    CHECK(rt && rt->members == 4 && rt->enc == 12 && rt->ekf == 0x20 && rt->tid == 8812u);
+}
+
 static void TestAiEvent() {
     auto k = ParseAiEvent("KILL: ah=0xe1a40021 unit=0xffffffff enc=12 sq=3 pl=-1 var=0xe1a40021 fl=0x00 ekf=0x20 "
         "living=0 total=4 el=0 et=9 tid=8812");
@@ -343,6 +383,9 @@ static void TestTelemetry() {
         CHECK(k && e);
         log.Death("a10", *k);
         log.Erase("we\"ird\\", *e);
+        auto sw = ParseSwarmEvent("SWARM: ah=0x00000007 unit=0x00010003 enc=5 sq=2 var=0xe1a40022 ekf=0x00 members=3 tid=9");
+        CHECK(sw);
+        log.Swarm("a10", *sw);
         log.Rejected();
         log.Rejected();
         log.Pipe(false);
@@ -363,6 +406,9 @@ static void TestTelemetry() {
             "\"var_handle\":\"0x00000005\",\"ah\":\"0x00000005\",\"unit\":\"0xffffffff\",\"ekf\":\"0x00\",\"el\":-1,\"et\":-1,"
             "\"tid\":1}\n"
             "{\"ev\":\"squad\",\"t\":N,\"gen\":1,\"mission\":\"we\\\"ird\\\\\",\"enc\":-1,\"sq\":-1,\"living\":-1,\"spawned\":-1}\n"
+            "{\"ev\":\"swarm\",\"t\":N,\"gen\":1,\"mission\":\"a10\",\"enc\":5,\"sq\":2,\"variant\":34,"
+            "\"var_handle\":\"0xe1a40022\",\"ah\":\"0x00000007\",\"unit\":\"0x00010003\",\"ekf\":\"0x00\",\"members\":3,"
+            "\"tid\":9}\n"
             "{\"ev\":\"pipe\",\"t\":N,\"gen\":1,\"state\":\"disconnected\"}\n"
             "{\"ev\":\"mission_end\",\"t\":N,\"gen\":1,\"mission\":\"a10\",\"reason\":\"won\",\"rejected\":2}\n"
             "{\"ev\":\"mission_load\",\"t\":N,\"gen\":2,\"mission\":\"a30\"}\n"
@@ -383,6 +429,7 @@ static void TestTelemetry() {
 
 int main() {
     TestAiEvent();
+    TestSwarmEvent();
     TestTelemetry();
     TestReconcile();
     TestLocationChecked();
