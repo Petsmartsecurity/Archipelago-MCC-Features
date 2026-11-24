@@ -114,6 +114,7 @@ namespace haloap {
         std::atomic<bool> m_pipeUp{ false };
         std::unique_ptr<TelemetryLog> m_telemetry;  // set by SetStateDir; internally locked
         std::set<int64_t> m_inFlight;  // sent on this connection, awaiting confirmation (poll thread only)
+        std::set<std::string> m_releaseNoticeShown;  // game flags already told "host release setting keeps checks open" (poll thread only)
         std::atomic<bool> m_flushRequested{ false };
         // "Re-evaluate the goal" request (set by either thread; cleared by the poll thread in FlushPending).
         std::atomic<bool> m_goalRequested{ false };

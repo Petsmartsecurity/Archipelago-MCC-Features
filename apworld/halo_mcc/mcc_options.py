@@ -221,8 +221,10 @@ class GoalMode(Choice):
     enabled both choices are identical: beating that game's final mission wins the run.
 
     per_game:  every enabled game has its own final mission (ce_final_mission, h2_final_mission). Beating a game's final
-               mission finishes THAT game: all of its checks that you have not found yet are sent out to the multiworld
-               at once, as if you had collected them. The run is won when every enabled game is finished.
+               mission finishes THAT game. If the host allows !release at any time (release "enabled" or
+               "auto-enabled"), all of that game's checks you have not found yet are sent out to the multiworld at once;
+               with the host's default ("auto"), "goal" or "disabled" they stay open to collect. The run is won when every
+               enabled game is finished.
     one_final: all games' checks and missions are pooled and ONE final mission, drawn at random from the enabled games'
                final missions, is the only goal. The other games' final missions become ordinary missions (unlocked
                by their Access item, with their normal checks) and beating them does not count towards the goal.

@@ -194,30 +194,41 @@ static void TestGoalModes() {
         GameProgress p;
         p.Configure(Both(mode));
         CHECK(p.Mode() == GoalMode::PerGame);
-        auto d = p.Decide({}, kMissing);
+        auto d = p.Decide({}, kMissing, true);
         CHECK(!d.sendGoal && d.release.empty());
-        d = p.Decide({ "CE" }, kMissing);
+        d = p.Decide({ "CE" }, kMissing, true);
         CHECK(!d.sendGoal && d.release == (std::vector<int64_t>{ 101000, 102011, 1'010'110'005LL }));
-        d = p.Decide({ "H2" }, kMissing);
+        d = p.Decide({ "H2" }, kMissing, true);
         CHECK(!d.sendGoal && d.release == (std::vector<int64_t>{ 202000, 215011, 1'020'110'001LL }));
-        d = p.Decide({ "CE", "H2" }, kMissing);
+        d = p.Decide({ "CE", "H2" }, kMissing, true);
         CHECK(d.sendGoal && d.release.empty());
         // idempotent: nothing missing = nothing to send; same input = same answer
-        CHECK(p.Decide({ "CE" }, {}).release.empty());
-        CHECK(p.Decide({ "CE" }, kMissing).release == p.Decide({ "CE" }, kMissing).release);
+        CHECK(p.Decide({ "CE" }, {}, true).release.empty());
+        CHECK(p.Decide({ "CE" }, kMissing, true).release == p.Decide({ "CE" }, kMissing, true).release);
+    }
+    // the host's release setting is respected (QUESTIONS #13): not allowed = nothing released, GOAL unaffected
+    {
+        GameProgress p;
+        p.Configure(Both(0));
+        CHECK(p.Decide({ "CE" }, kMissing, false).release.empty() && !p.Decide({ "CE" }, kMissing, false).sendGoal);
+        CHECK(p.Decide({ "CE", "H2" }, kMissing, false).sendGoal);
+        CHECK(!p.Decide({ "CE" }, kMissing, true).release.empty());
+        // permission values (apclientpp Permission): DISABLED 0, ENABLED 1, GOAL 2, AUTO 6, AUTO_ENABLED 7, unknown
+        CHECK(!GameProgress::ReleaseAllowed(0) && GameProgress::ReleaseAllowed(1) && !GameProgress::ReleaseAllowed(2));
+        CHECK(!GameProgress::ReleaseAllowed(6) && GameProgress::ReleaseAllowed(7) && !GameProgress::ReleaseAllowed(std::nullopt));
     }
     // per_game, one game: never releases, GOAL exactly as before
     GameProgress c;
     c.Configure(json{ {"ce_enabled", 1}, {"h2_enabled", 0}, {"final_mission", "The Maw"}, {"h2_final_mission", ""}, {"goal_mode", 0} });
-    CHECK(c.Decide({}, kMissing).release.empty() && !c.Decide({}, kMissing).sendGoal);
-    auto cd = c.Decide({ "CE" }, kMissing);
+    CHECK(c.Decide({}, kMissing, true).release.empty() && !c.Decide({}, kMissing, true).sendGoal);
+    auto cd = c.Decide({ "CE" }, kMissing, true);
     CHECK(cd.sendGoal && cd.release.empty());
     GameProgress old;   // old seed, no keys at all
     old.Configure(json{ {"final_mission", "Keyes"} });
-    CHECK(old.Decide({ "CE" }, kMissing).sendGoal && old.Decide({ "CE" }, kMissing).release.empty());
+    CHECK(old.Decide({ "CE" }, kMissing, true).sendGoal && old.Decide({ "CE" }, kMissing, true).release.empty());
     GameProgress h;
     h.Configure(json{ {"ce_enabled", 0}, {"h2_enabled", 1}, {"h2_final_mission", "Regret"}, {"goal_mode", 0} });
-    CHECK(h.Decide({ "H2" }, kMissing).sendGoal && h.Decide({ "H2" }, kMissing).release.empty());
+    CHECK(h.Decide({ "H2" }, kMissing, true).sendGoal && h.Decide({ "H2" }, kMissing, true).release.empty());
     // one_final, one game: identical to per_game with one game (even if goal_game is absent or wrong)
     for (const char* gg : { (const char*)nullptr, "CE", "H2" }) {
         GameProgress o;
@@ -225,9 +236,9 @@ static void TestGoalModes() {
         if (gg) j["goal_game"] = gg;
         o.Configure(j);
         CHECK(o.DllMessages({}) == (Msgs{ "COMPLETED:", "FINAL_MISSION:9" }));
-        auto od = o.Decide({}, kMissing);
+        auto od = o.Decide({}, kMissing, true);
         CHECK(!od.sendGoal && od.release.empty());
-        od = o.Decide({ "CE" }, kMissing);
+        od = o.Decide({ "CE" }, kMissing, true);
         CHECK(od.sendGoal && od.release.empty());
         CHECK(o.OnMissionComplete(*GameProgress::ByCode("d40")) == Game::CE);
     }
@@ -242,9 +253,9 @@ static void TestOneFinal() {
     CHECK(!ce.OnMissionComplete(*GameProgress::ByCode("08b_deltacontrol")));
     CHECK(ce.DllMessages({ 215000 }) == (Msgs{ "COMPLETED:", "FINAL_MISSION:9", "H2_COMPLETED:15", "H2_FINAL:0" }));
     CHECK(!ce.GoalReached({}) && !ce.GoalReached({ "H2" }) && ce.GoalReached({ "CE" }));
-    auto d = ce.Decide({ "H2" }, kMissing);       // a stray H2 flag changes nothing
+    auto d = ce.Decide({ "H2" }, kMissing, true);       // a stray H2 flag changes nothing
     CHECK(!d.sendGoal && d.release.empty());
-    d = ce.Decide({ "CE" }, kMissing);            // winning sends GOAL only, never a release
+    d = ce.Decide({ "CE" }, kMissing, true);            // winning sends GOAL only, never a release
     CHECK(d.sendGoal && d.release.empty());
     // H2 is the goal game: the Maw is ordinary (DLL gets FINAL_MISSION:-1 so it unlocks by its item)
     GameProgress h2;
@@ -253,7 +264,7 @@ static void TestOneFinal() {
     CHECK(h2.OnMissionComplete(*GameProgress::ByCode("08b_deltacontrol")) == Game::H2);
     CHECK(h2.DllMessages({})[1] == "FINAL_MISSION:-1" && h2.DllMessages({})[3] == "H2_FINAL:15");
     CHECK(!h2.GoalReached({ "CE" }) && h2.GoalReached({ "H2" }) && !h2.GoalReached({ "CE" }));
-    CHECK(h2.Decide({ "CE" }, kMissing).release.empty());
+    CHECK(h2.Decide({ "CE" }, kMissing, true).release.empty());
     // even if slot_data still named both finals, the non-goal game's final does not count
     json both = Both(1, "H2");
     both["final_mission"] = "The Maw";
@@ -264,7 +275,7 @@ static void TestOneFinal() {
     for (json j : { Both(1), Both(1, "XX"), Both(1, "") }) {
         GameProgress u;
         u.Configure(j);
-        CHECK(!u.GoalReached({ "CE", "H2" }) && !u.Decide({ "CE", "H2" }, kMissing).sendGoal && u.Decide({ "CE" }, kMissing).release.empty());
+        CHECK(!u.GoalReached({ "CE", "H2" }) && !u.Decide({ "CE", "H2" }, kMissing, true).sendGoal && u.Decide({ "CE" }, kMissing, true).release.empty());
     }
     GameProgress off;
     off.Configure(json{ {"ce_enabled", 1}, {"h2_enabled", 0}, {"final_mission", "The Maw"}, {"goal_mode", 1}, {"goal_game", "H2"} });
@@ -272,14 +283,14 @@ static void TestOneFinal() {
     // an unknown (newer) goal_mode: no goal, no release, no DLL final
     GameProgress nw;
     nw.Configure(Both(2));
-    CHECK(nw.Mode() == GoalMode::Unknown && !nw.GoalReached({ "CE", "H2" }) && nw.Decide({ "CE" }, kMissing).release.empty());
+    CHECK(nw.Mode() == GoalMode::Unknown && !nw.GoalReached({ "CE", "H2" }) && nw.Decide({ "CE" }, kMissing, true).release.empty());
     CHECK(nw.DllMessages({})[1] == "FINAL_MISSION:-1");
     GameProgress wt;   // wrong type = missing = per_game
     wt.Configure(json{ {"ce_enabled", 1}, {"final_mission", "The Maw"}, {"goal_mode", "one_final"} });
     CHECK(wt.Mode() == GoalMode::PerGame && wt.GoalReached({ "CE" }));
     // before the config is known nothing is decided
     GameProgress un;
-    CHECK(!un.Decide({ "CE", "H2" }, kMissing).sendGoal && un.Decide({ "CE" }, kMissing).release.empty());
+    CHECK(!un.Decide({ "CE", "H2" }, kMissing, true).sendGoal && un.Decide({ "CE" }, kMissing, true).release.empty());
 }
 
 int main() {

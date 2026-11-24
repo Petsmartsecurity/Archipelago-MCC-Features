@@ -71,7 +71,15 @@ namespace haloap {
         // every server-missing location whose game's final mission is flagged. A single enabled game never releases,
         // so a one-game seed behaves exactly as before 6.G. Idempotent: the same flags + missing give the same answer,
         // and a location the server already has is not in `missing`.
-        GoalDecision Decide(const std::set<std::string>& flags, const std::set<int64_t>& missing) const;
+        // releaseAllowed: the host's room permits a manual release now (ReleaseAllowed below). When false, release is
+        // always empty: the user chose to respect the host's release setting (QUESTIONS #13, 2026-11-24); the remaining
+        // checks then stay open to collect, and GOAL is unaffected.
+        GoalDecision Decide(const std::set<std::string>& flags, const std::set<int64_t>& missing, bool releaseAllowed) const;
+
+        // The room's "release" permission (RoomInfo/RoomUpdate permissions; bit 1 = ENABLED, manual use any time).
+        // A game finishing is not the slot's goal, so only ENABLED / AUTO_ENABLED allow it; GOAL-only, AUTO, DISABLED,
+        // or an unknown permission (nullopt) do not.
+        static bool ReleaseAllowed(std::optional<int> permission) { return permission && (*permission & 1) != 0; }
 
         // Launcher -> DLL state: COMPLETED:, FINAL_MISSION: (-1 = none), and, only when H2 is on, H2_COMPLETED:
         // (mission numbers) and H2_FINAL: (0 = none). CE lines are byte-identical to the old launcher for CE seeds.

@@ -384,11 +384,24 @@ namespace haloap {
             // of truth, so this is idempotent: a reconnect asks again and only what the server still lacks is sent; what was
             // sent on this connection and is not yet echoed is skipped via m_inFlight. Only after the slot connected (the
             // early return above), never from the pipe thread.
+            // The host's release setting is respected (QUESTIONS #13): a finished game's checks are only sent when the room
+            // allows a manual release any time (ENABLED bit); otherwise they stay open to collect.
+            std::optional<int> releasePermission;
+            {
+                const auto& perms = m_client->get_permissions();
+                auto it = perms.find("release");
+                if (it != perms.end()) releasePermission = static_cast<int>(it->second);
+            }
+            const bool releaseAllowed = GameProgress::ReleaseAllowed(releasePermission);
             GoalDecision decision;
             {
                 std::lock_guard<std::mutex> lock(m_progressMutex);
-                decision = m_progress.Decide(flags, m_client->get_missing_locations());
+                decision = m_progress.Decide(flags, m_client->get_missing_locations(), releaseAllowed);
             }
+            if (!releaseAllowed && !decision.sendGoal)
+                for (const auto& g : flags)
+                    if (m_releaseNoticeShown.insert(g).second)  // once per game (QA 6.G m10)
+                        std::cout << "[ap] " << g << " final mission beaten: the host's release setting does not allow an early release, so its remaining checks stay open\n";
             std::list<int64_t> release;
             for (int64_t id : decision.release)
                 if (m_inFlight.insert(id).second) release.push_back(id);

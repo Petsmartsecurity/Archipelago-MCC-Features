@@ -144,10 +144,10 @@ namespace haloap {
         return true;
     }
 
-    GoalDecision GameProgress::Decide(const std::set<std::string>& flags, const std::set<int64_t>& missing) const {
+    GoalDecision GameProgress::Decide(const std::set<std::string>& flags, const std::set<int64_t>& missing, bool releaseAllowed) const {
         GoalDecision d;
         d.sendGoal = GoalReached(flags);
-        if (d.sendGoal || !m_configured || m_mode != GoalMode::PerGame || !(m_ce && m_h2)) return d;
+        if (d.sendGoal || !releaseAllowed || !m_configured || m_mode != GoalMode::PerGame || !(m_ce && m_h2)) return d;
         for (Game g : { Game::CE, Game::H2 }) {
             if (FinalIndex(g) < 0 || !flags.count(GameTag(g))) continue;  // this game's final is not beaten (yet)
             for (int64_t id : missing)
