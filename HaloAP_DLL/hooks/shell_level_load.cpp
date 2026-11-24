@@ -16,6 +16,8 @@ namespace haloap {
         // param_1 = engine object ("this" pointer)
         // param_2 = level path string (e.g. "levels\\a10\\a10")
         //
+        // NOTE: this is the engine's generic "post a string to the frame pump" function; level path strings are level loads,
+        // "HS: ..." strings are HaloScript (PostHaloScript below). The first diagnostic name was wrong (research 1.1).
         // The function pops a message from the free pool (SList at +0x440),
         // fills it with type 0xFFFFFFFF and a _strdup'd copy of the path,
         // then pushes it onto the work queue (SList at +0x430).
@@ -92,6 +94,22 @@ namespace haloap {
     void* GetEngineObject() {
         if (!g_engineGlobal) return nullptr;
         return *g_engineGlobal;
+    }
+
+    bool CanPostHaloScript() {
+        return g_original && g_engineGlobal && *g_engineGlobal;
+    }
+
+    bool PostHaloScript(const char* command) {
+        ShellLevelLoadFn original = g_original;
+        void** global = g_engineGlobal;
+        void* engine = global ? *global : nullptr;
+        if (!original || !engine || !command) return false;
+        char buf[0x400 + 8];  // the console evaluator takes at most 0x400 characters (research 1.1)
+        int n = snprintf(buf, sizeof(buf), "HS: %s", command);
+        if (n < 0 || n >= static_cast<int>(sizeof(buf)) - 4) return false;
+        original(engine, buf);
+        return true;
     }
 
     bool InstallShellLevelLoadHook(PipeClient* pipe) {

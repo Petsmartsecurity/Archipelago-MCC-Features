@@ -51,4 +51,12 @@ namespace haloap {
     };
     std::optional<SwarmEvent> ParseSwarmEvent(std::string_view message);
 
+    // "EFFECT_APPLIED: <item id> <index>" / "EFFECT_SKIPPED: <item id> <index>" (ADR-005): both non-negative decimal integers.
+    struct EffectDone {
+        int64_t id;
+        int index;
+        bool applied;  // false = skipped (the DLL can never apply it)
+    };
+    std::optional<EffectDone> ParseEffectDone(std::string_view message);
+
 }  // namespace haloap

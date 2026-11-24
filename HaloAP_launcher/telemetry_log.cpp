@@ -172,6 +172,12 @@ namespace haloap {
             + ",\"members\":" + std::to_string(e.members) + ",\"tid\":" + std::to_string(e.tid));
     }
 
+    void TelemetryLog::Effect(const std::string& mission, int64_t id, int index, bool applied) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        WriteLine("effect", ",\"mission\":" + JsonString(mission) + ",\"item\":" + std::to_string(id) + ",\"index\":" + std::to_string(index)
+            + ",\"result\":" + JsonString(applied ? "applied" : "skipped"));
+    }
+
     void TelemetryLog::Death(const std::string& mission, const AiEvent& e) { Event(e, "death", mission); }
     void TelemetryLog::Erase(const std::string& mission, const AiEvent& e) { Event(e, "erase", mission); }
 

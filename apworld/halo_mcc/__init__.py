@@ -71,4 +71,5 @@ class MCCWorld(World):
             "ce_enabled": int(bool(self.options.ce_enabled.value)),
             "h2_enabled": int(bool(self.options.h2_enabled.value)),
             "h2_final_mission": self.h2_final_mission,
+            "effect_items": int(items.effects_enabled(self)),
         }

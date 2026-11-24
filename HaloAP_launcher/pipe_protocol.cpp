@@ -195,4 +195,23 @@ namespace haloap {
         return value;
     }
 
+    std::optional<EffectDone> ParseEffectDone(std::string_view message) {
+        bool applied = true;
+        auto rest = AfterPrefix(message, "EFFECT_APPLIED: ");
+        if (!rest) { rest = AfterPrefix(message, "EFFECT_SKIPPED: "); applied = false; }
+        if (!rest) return std::nullopt;
+        size_t sp = rest->find(' ');
+        if (sp == std::string_view::npos) return std::nullopt;
+        auto id = ParsePositiveInt64(rest->substr(0, sp));
+        std::string_view tail = rest->substr(sp + 1);
+        if (!id || tail.empty() || tail.front() == ' ' || tail.size() > 10) return std::nullopt;
+        long long idx = 0;
+        for (char c : tail) {
+            if (c < '0' || c > '9') return std::nullopt;
+            idx = idx * 10 + (c - '0');
+        }
+        if (idx > 0x7FFFFFFF || *id > 0x7FFFFFFF) return std::nullopt;
+        return EffectDone{ *id, static_cast<int>(idx), applied };
+    }
+
 }  // namespace haloap

@@ -168,6 +168,9 @@
     <ClInclude Include="hooks\skull_hook.h" />
     <ClInclude Include="hooks\kill_hook.h" />
     <ClInclude Include="hooks\h2_observe.h" />
+    <ClInclude Include="hooks\effects.h" />
+    <ClInclude Include="hooks\effect_queue.h" />
+    <ClInclude Include="hooks\effect_table.h" />
     <ClInclude Include="hooks\h2_observe_logic.h" />
     <ClInclude Include="item_handler.h" />
     <ClInclude Include="minhook\MinHook.h" />
@@ -184,6 +187,7 @@
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="hooks\chapter_title.cpp" />
+    <ClCompile Include="hooks\effects.cpp" />
     <ClCompile Include="hooks\mission_complete.cpp" />
     <ClCompile Include="hooks\mission_id_lookup.cpp" />
     <ClCompile Include="hooks\mission_load.cpp" />

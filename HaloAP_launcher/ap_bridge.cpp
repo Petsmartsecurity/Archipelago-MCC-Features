@@ -84,6 +84,11 @@ namespace haloap {
                 m_sendToDll("ITEM_RECIVED: " + std::to_string(itemId));
             }
         }
+        // Effect items taken over but not yet reported applied (the DLL ignores ones it already has queued).
+        {
+            std::lock_guard<std::mutex> lock(m_effectMutex);
+            for (const EffectItem& e : m_effects.InFlight()) m_sendToDll(EffectMessage(e.id, e.index));
+        }
         // Also send current completion state
         SendCompletionState();
     }
@@ -211,6 +216,21 @@ namespace haloap {
             } else {
                 if (m_telemetry) m_telemetry->Rejected();
                 std::cerr << "[ap] malformed SWARM message ignored\n";
+            }
+            return true;
+        }
+        if (message.rfind("EFFECT_APPLIED: ", 0) == 0 || message.rfind("EFFECT_SKIPPED: ", 0) == 0) {
+            if (auto done = ParseEffectDone(message)) {
+                bool known;
+                {
+                    std::lock_guard<std::mutex> lock(m_effectMutex);
+                    known = m_effects.OnDone(done->id, done->index);
+                }
+                std::cout << "[ap] effect " << (done->applied ? "applied" : "skipped") << ": item " << done->id << " (index " << done->index << ")"
+                          << (known ? "" : " [not in flight]") << "\n";
+                if (m_telemetry) m_telemetry->Effect(m_mission, done->id, done->index, done->applied);
+            } else {
+                std::cerr << "[ap] malformed EFFECT_APPLIED message ignored\n";
             }
             return true;
         }
@@ -442,6 +462,13 @@ namespace haloap {
             earlyGoals = m_progress.Configure(slotData);
         }
 
+        {
+            bool on = slotData.contains("effect_items") && slotData["effect_items"].is_number_integer() && slotData["effect_items"].get<int>() != 0;
+            m_effectsEnabled.store(on);
+            std::lock_guard<std::mutex> lock(m_effectMutex);
+            if (!m_stateDir.empty()) m_effects.Bind(m_stateDir + EffectFileName(m_client->get_seed(), m_slot));
+            std::cout << "[ap] effect_items = " << on << " (cursor " << m_effects.Cursor() << ", " << m_effects.InFlight().size() << " not yet applied)\n";
+        }
         if (slotData.contains("skullsanity"))
         {
             m_skullsanityTier = slotData["skullsanity"].get<int>();
@@ -529,6 +556,20 @@ namespace haloap {
             std::string itemName = m_client->get_item_name(item.item, m_game);
             std::cout << "[ap] received item: " << itemName
                 << " (id " << item.item << ")\n";
+
+            if (IsEffectItemId(item.item)) {
+                // Effects are not idempotent and AP replays every item on every connect: the cursor decides (effect_cursor.h).
+                bool fresh = false;
+                if (m_effectsEnabled.load()) {
+                    std::lock_guard<std::mutex> lock(m_effectMutex);
+                    fresh = m_effects.OnItem(item.item, item.index);
+                } else {
+                    std::cerr << "[ap] effect item received but this seed has effect_items off: ignored\n";
+                }
+                if (fresh && m_sendToDll) m_sendToDll(EffectMessage(item.item, item.index));
+                else if (item.index < 0 && m_effectsEnabled.load()) std::cerr << "[ap] effect item without an index ignored (starting inventory is never applied)\n";
+                continue;
+            }
 
             // Buffer the item
             {

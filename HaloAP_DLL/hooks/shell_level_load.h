@@ -18,4 +18,10 @@ namespace haloap {
     // Returns nullptr if the global hasn't been resolved yet or the engine
     // object hasn't been created.
     void* GetEngineObject();
+
+    // Posts "HS: <command>" to the engine's frame pump through vtable slot 9's ORIGINAL function (never the detour above,
+    // so it is not reported as a level load). False if the engine object or the original is not resolved. Any thread
+    // (lock-free SList push; docs/research/item-effects.md 1.1). The engine copies the string (_strdup).
+    bool PostHaloScript(const char* command);
+    bool CanPostHaloScript();
 }

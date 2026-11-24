@@ -189,6 +189,31 @@ class H2FinalMission(Choice):
     option_random_choice = 16
 
 
+class EffectItems(Toggle):
+    """
+    EXPERIMENTAL. Replaces the plain "filler" items with effect items that act on the running game when received:
+    a mix of helpful ones (Medkit, Recharged Shields, 20 s Invulnerable, 30 s Infinite Ammo, 30 s Moon Gravity) and traps
+    (Shields Down, 20 s Heavy Gravity, 15 s Slow Motion). Traps never kill you by themselves. Only filler is replaced,
+    so no check, mission or skull item changes; only Halo CE (it does nothing if ce_enabled is off).
+
+    An effect waits until you are in a mission (and is applied at most one per 10 seconds); effects do not survive a checkpoint
+    revert; they are never repeated when you reconnect. Off by default: not yet tested in a long play session.
+    """
+    display_name = "Effect Items"
+    default = False
+
+
+class TrapPercentage(Range):
+    """
+    With effect_items on: the chance (in percent) that a replaced filler item is a trap instead of a helpful effect.
+    0 = no traps, 100 = only traps. Ignored when effect_items is off.
+    """
+    display_name = "Trap Percentage"
+    range_start = 0
+    range_end = 100
+    default = 20
+
+
 @dataclass
 class MCCOptions(PerGameCommonOptions):
     skullsanity: SkullSanity
@@ -204,3 +229,5 @@ class MCCOptions(PerGameCommonOptions):
     ce_final_mission: CeFinalMission
     h2_enabled: H2Enabled
     h2_final_mission: H2FinalMission
+    effect_items: EffectItems
+    trap_percentage: TrapPercentage

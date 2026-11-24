@@ -29,6 +29,10 @@ CASES = [
                              "kill_difficulty": "heroic", "kill_infection_interval": 50}),
     ("kills_legendary_species", {"kill_milestone_interval": 50, "kill_difficulty": "legendary",
                                  "kill_species_checks": True, "skullsanity": "all"}),
+    # effect items (ADR-005): added after the CE-only golden was captured; the cases above prove the option's default (off) changes nothing
+    ("effects_on", {"effect_items": True}),
+    ("effects_traps_only", {"effect_items": True, "trap_percentage": 100, "skullsanity": "all"}),
+    ("effects_good_only_kills", {"effect_items": True, "trap_percentage": 0, "kill_milestone_interval": 25}),
 ]
 SEEDS = [1, 2, 3, 4, 5, 123456]
 

@@ -1,6 +1,7 @@
 #include "pipe_client.h"
 #include "item_handler.h"
 #include "hooks/skull_hook.h"
+#include "hooks/effects.h"
 #include "shared/common.h"
 #include <cstdio>
 #include <vector>
@@ -232,6 +233,12 @@ void PipeClient::HandleMessage(const std::string& message)
         int itemID = std::atoi(message.c_str() + itemPrefix.size());
         printf("[pipe] Item received: %d\n", itemID);
         haloap::GetItemHandler().addItem(itemID);
+        return;
+    }
+
+    if (message.rfind("EFFECT: ", 0) == 0)
+    {
+        haloap::EffectsOnMessage(this, message);
         return;
     }
 

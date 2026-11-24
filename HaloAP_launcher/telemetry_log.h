@@ -36,6 +36,10 @@ namespace haloap {
         // on anything else (PLAN 5.7).
         void Swarm(const std::string& mission, const SwarmEvent& e);
 
+        // An effect item the DLL applied (EFFECT_APPLIED) or could never apply (EFFECT_SKIPPED): {"ev":"effect",...}. Does not
+        // change `gen`.
+        void Effect(const std::string& mission, int64_t id, int index, bool applied);
+
         // Path of the open file, empty until the first write succeeded.
         std::string Path();
 

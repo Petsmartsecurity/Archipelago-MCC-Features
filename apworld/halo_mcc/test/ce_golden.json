@@ -222,6 +222,840 @@
     "start": "Halo (CE)"
    }
   },
+  "effects_good_only_kills/1": {
+   "options": {
+    "effect_items": true,
+    "kill_milestone_interval": 25,
+    "trap_percentage": 0
+   },
+   "seed": 1,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "323cf1e2c153d93f",
+    "locs": "56687f489015120a",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 134,
+    "n_locs": 134,
+    "n_probes": 32,
+    "placed": "299050c2af6e3361",
+    "precollected": [
+     "The Pillar of Autumn Access"
+    ],
+    "probes": "2a66cb83f9a8a93f",
+    "rng_next": 0.8474337369372327,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 25,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "The Pillar of Autumn"
+   }
+  },
+  "effects_good_only_kills/123456": {
+   "options": {
+    "effect_items": true,
+    "kill_milestone_interval": 25,
+    "trap_percentage": 0
+   },
+   "seed": 123456,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "df569138ecdd75c3",
+    "locs": "56687f489015120a",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 134,
+    "n_locs": 134,
+    "n_probes": 32,
+    "placed": "b505f71331d31ad1",
+    "precollected": [
+     "Two Betrayals Access"
+    ],
+    "probes": "917236add6241be6",
+    "rng_next": 0.7940590105180981,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 25,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "Two Betrayals"
+   }
+  },
+  "effects_good_only_kills/2": {
+   "options": {
+    "effect_items": true,
+    "kill_milestone_interval": 25,
+    "trap_percentage": 0
+   },
+   "seed": 2,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "d4e74851a312f6e7",
+    "locs": "56687f489015120a",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 134,
+    "n_locs": 134,
+    "n_probes": 32,
+    "placed": "8bc9e6d6ad9e6016",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "c3d0b75d4633be5a",
+    "rng_next": 0.9478274870593494,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 25,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "effects_good_only_kills/3": {
+   "options": {
+    "effect_items": true,
+    "kill_milestone_interval": 25,
+    "trap_percentage": 0
+   },
+   "seed": 3,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "19797424d9da5dc4",
+    "locs": "56687f489015120a",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 134,
+    "n_locs": 134,
+    "n_probes": 32,
+    "placed": "68c1ef93f89dcf96",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "c3d0b75d4633be5a",
+    "rng_next": 0.5442292252959519,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 25,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "effects_good_only_kills/4": {
+   "options": {
+    "effect_items": true,
+    "kill_milestone_interval": 25,
+    "trap_percentage": 0
+   },
+   "seed": 4,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "50e21576963f1524",
+    "locs": "56687f489015120a",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 134,
+    "n_locs": 134,
+    "n_probes": 32,
+    "placed": "a1d46f107aba2b59",
+    "precollected": [
+     "Keyes Access"
+    ],
+    "probes": "4efc8b04ad703846",
+    "rng_next": 0.1031660342307158,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 25,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "Keyes"
+   }
+  },
+  "effects_good_only_kills/5": {
+   "options": {
+    "effect_items": true,
+    "kill_milestone_interval": 25,
+    "trap_percentage": 0
+   },
+   "seed": 5,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "fc892d0532835604",
+    "locs": "56687f489015120a",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 134,
+    "n_locs": 134,
+    "n_probes": 32,
+    "placed": "05b4f1493f4bb7d5",
+    "precollected": [
+     "Halo (CE) Access"
+    ],
+    "probes": "f6836b9e70209d4b",
+    "rng_next": 0.7417869892607294,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 25,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "Halo (CE)"
+   }
+  },
+  "effects_on/1": {
+   "options": {
+    "effect_items": true
+   },
+   "seed": 1,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "cf81ecb06068b6b9",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 35,
+    "placed": "e8271b7eadb24b0c",
+    "precollected": [
+     "The Pillar of Autumn Access"
+    ],
+    "probes": "9670e6e64a82f5f2",
+    "rng_next": 0.8474337369372327,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "The Pillar of Autumn"
+   }
+  },
+  "effects_on/123456": {
+   "options": {
+    "effect_items": true
+   },
+   "seed": 123456,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "a7363e8408d6f969",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 35,
+    "placed": "e6a9d7b4fdad3503",
+    "precollected": [
+     "Two Betrayals Access"
+    ],
+    "probes": "40a66c193b362171",
+    "rng_next": 0.7940590105180981,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "Two Betrayals"
+   }
+  },
+  "effects_on/2": {
+   "options": {
+    "effect_items": true
+   },
+   "seed": 2,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "8ab121a5ac21b0b6",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 35,
+    "placed": "5dba094bc6b00089",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "2f90b37d51a84357",
+    "rng_next": 0.9478274870593494,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "effects_on/3": {
+   "options": {
+    "effect_items": true
+   },
+   "seed": 3,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "a0b4394c54c4640e",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 34,
+    "placed": "d4d6096cb1cbe121",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "6e8780703d6b0f04",
+    "rng_next": 0.5442292252959519,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "effects_on/4": {
+   "options": {
+    "effect_items": true
+   },
+   "seed": 4,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "f249b9dd2ffac57e",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 34,
+    "placed": "b5beb0c51543feb4",
+    "precollected": [
+     "Keyes Access"
+    ],
+    "probes": "575a54d2f72219f1",
+    "rng_next": 0.1031660342307158,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "Keyes"
+   }
+  },
+  "effects_on/5": {
+   "options": {
+    "effect_items": true
+   },
+   "seed": 5,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "e1be3f13bd8defc2",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 34,
+    "placed": "7ef91538645ec764",
+    "precollected": [
+     "Halo (CE) Access"
+    ],
+    "probes": "c37b52a0942ad1f5",
+    "rng_next": 0.7417869892607294,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 1
+    },
+    "start": "Halo (CE)"
+   }
+  },
+  "effects_traps_only/1": {
+   "options": {
+    "effect_items": true,
+    "skullsanity": "all",
+    "trap_percentage": 100
+   },
+   "seed": 1,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "3eecd10b89eb0a14",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 44,
+    "placed": "e0a6296d1a66dd65",
+    "precollected": [
+     "The Pillar of Autumn Access"
+    ],
+    "probes": "d1c8c8bfa9af27b6",
+    "rng_next": 0.8474337369372327,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 2
+    },
+    "start": "The Pillar of Autumn"
+   }
+  },
+  "effects_traps_only/123456": {
+   "options": {
+    "effect_items": true,
+    "skullsanity": "all",
+    "trap_percentage": 100
+   },
+   "seed": 123456,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "3ae4371d7e04d9fd",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 44,
+    "placed": "f1f9611cc1151dfa",
+    "precollected": [
+     "Two Betrayals Access"
+    ],
+    "probes": "98dc349f5dd51fd4",
+    "rng_next": 0.7940590105180981,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 2
+    },
+    "start": "Two Betrayals"
+   }
+  },
+  "effects_traps_only/2": {
+   "options": {
+    "effect_items": true,
+    "skullsanity": "all",
+    "trap_percentage": 100
+   },
+   "seed": 2,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "6a346150a47a095f",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 44,
+    "placed": "500d4cba2671175e",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "6bfce97ebd8635ed",
+    "rng_next": 0.9478274870593494,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 2
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "effects_traps_only/3": {
+   "options": {
+    "effect_items": true,
+    "skullsanity": "all",
+    "trap_percentage": 100
+   },
+   "seed": 3,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "61526beb37c8c713",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 44,
+    "placed": "8d31b32b32492443",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "6bfce97ebd8635ed",
+    "rng_next": 0.5442292252959519,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 2
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "effects_traps_only/4": {
+   "options": {
+    "effect_items": true,
+    "skullsanity": "all",
+    "trap_percentage": 100
+   },
+   "seed": 4,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "3894ca2c8f02deb4",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 44,
+    "placed": "b6946cafd4227609",
+    "precollected": [
+     "Keyes Access"
+    ],
+    "probes": "8476de08c8785769",
+    "rng_next": 0.1031660342307158,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 2
+    },
+    "start": "Keyes"
+   }
+  },
+  "effects_traps_only/5": {
+   "options": {
+    "effect_items": true,
+    "skullsanity": "all",
+    "trap_percentage": 100
+   },
+   "seed": 5,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "f3820bd09e9d841f",
+    "locs": "7167b3056a161704",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 52,
+    "n_locs": 52,
+    "n_probes": 44,
+    "placed": "778008dd8b4996b7",
+    "precollected": [
+     "Halo (CE) Access"
+    ],
+    "probes": "09f0db5d81e54c77",
+    "rng_next": 0.7417869892607294,
+    "slot": {
+     "ce_enabled": 1,
+     "effect_items": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
+     "kill_milestone_interval": 0,
+     "kill_species_checks": 0,
+     "killsanity_version": 1,
+     "skullsanity": 2
+    },
+    "start": "Halo (CE)"
+   }
+  },
   "final_keyes/1": {
    "options": {
     "ce_final_mission": "keyes"

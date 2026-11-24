@@ -8,6 +8,28 @@ from .mcc_options import SkullSanity
 CE_SKULL_DISABLERS: list[str] = [*GAME_SKULLS["ce"], *NON_SCORING_SKULLS["ce"]]
 
 
+# Effect items (ADR-005, docs/research/item-effects.md 4.1/4.2): ids 80000 + game*1000 + k (CE = 81000..81999), good k 1..99,
+# traps k 101..199. Append-only once released: never renumber or rename. Gaps are intended (81003-81010 and 81102/81103/81106+
+# are phase B / not yet built). The DLL runs the matching HaloScript (hooks/effect_table.h; tests/test_effect_ids_agree.py ties
+# the two). Weight = relative chance among the good items (or among the traps) when filler is replaced.
+CE_EFFECT_ITEMS: list[tuple[str, int, ItemClassification, int]] = [
+    ("Effect: Medkit", 81001, ItemClassification.useful, 3),
+    ("Effect: Recharged Shields", 81002, ItemClassification.filler, 3),
+    ("Effect: Invulnerable (20 s)", 81011, ItemClassification.useful, 2),
+    ("Effect: Infinite Ammo (30 s)", 81012, ItemClassification.useful, 2),
+    ("Effect: Moon Gravity (30 s)", 81013, ItemClassification.filler, 2),
+    ("Trap: Shields Down", 81101, ItemClassification.trap, 3),
+    ("Trap: Heavy Gravity (20 s)", 81104, ItemClassification.trap, 2),
+    ("Trap: Slow Motion (15 s)", 81105, ItemClassification.trap, 2),
+]
+EFFECT_BY_NAME = {name: (item_id, cls) for name, item_id, cls, _ in CE_EFFECT_ITEMS}
+
+
+def effects_enabled(world) -> bool:
+    # CE-only: the DLL effects exist for Halo CE; without CE nothing could apply them
+    return bool(world.options.effect_items) and bool(world.options.ce_enabled)
+
+
 # create our own item object that has the game set correctly, everything else is the same as the base item object
 class MCCItem(Item):
     game = "Halo The Master Chief Collection"
@@ -18,14 +40,20 @@ def get_item_name_to_id():
     item_table = {
         "filler": 1,
         **{f"{level} Access": data.offset for level, data in LEVEL_DATA.items()},
-        **{f"{skull} Skull": SKULL_OFFSET + i + 1 for i, skull in enumerate(CE_SKULL_DISABLERS)}
+        **{f"{skull} Skull": SKULL_OFFSET + i + 1 for i, skull in enumerate(CE_SKULL_DISABLERS)},
+        **{name: item_id for name, item_id, _, _ in CE_EFFECT_ITEMS},
     }
     return item_table
 
 
 # gives us the name of a filler item
 def get_filler_item_name(world):
-    return "filler"
+    if not effects_enabled(world):
+        return "filler"  # no random draw: a seed without effect_items keeps its exact RNG stream (ce_golden)
+    traps = [i for i in CE_EFFECT_ITEMS if i[2] == ItemClassification.trap]
+    good = [i for i in CE_EFFECT_ITEMS if i[2] != ItemClassification.trap]
+    pool = traps if world.random.random() * 100 < world.options.trap_percentage.value else good
+    return world.random.choices([i[0] for i in pool], weights=[i[3] for i in pool])[0]
 
 
 # fill unfilled locations with filler from this world
@@ -34,7 +62,7 @@ def create_filler(world, filled_locations):
     unfilled_locations = world.multiworld.get_unfilled_locations(world.player)
     needed_items = len(unfilled_locations) - filled_locations
     for i in range(needed_items):
-        fillerpool.append(create_item_with_data(world, "filler"))
+        fillerpool.append(create_item_with_data(world, get_filler_item_name(world)))
 
     return fillerpool
 
@@ -70,6 +98,9 @@ def create_items(world):
 
 # creates a single item with its classification and ID
 def create_item_with_data(world, name):
+    if name in EFFECT_BY_NAME:
+        item_id, classification = EFFECT_BY_NAME[name]
+        return MCCItem(name, classification, item_id, world.player)
     if "Access" in name:
         classification = ItemClassification.progression
         real_name = name.replace(" Access", "")

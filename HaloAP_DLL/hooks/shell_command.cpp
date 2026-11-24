@@ -2,6 +2,7 @@
 #include "../minhook/MinHook.h"
 #include "shared/common.h"
 #include "skull_hook.h"
+#include "effects.h"
 #include <cstdio>
 #include <intrin.h>
 #include <psapi.h>
@@ -48,6 +49,7 @@ namespace haloap {
                     g_original(engineObj, 0xD, nullptr);  // teardown
                     g_original(engineObj, 0x1, nullptr);  // resume
                     haloap::SetInMission(false);
+                    haloap::EffectsSetInMission(false);
                 }
                 return;  // Don't process the original command (which was "load next mission")
             }
@@ -57,6 +59,7 @@ namespace haloap {
                 g_quitLockedMission.store(false);
                 printf("[hook] SHELL_CMD: intercepting — sending quit sequence (locked mission)\n");
                 haloap::SetInMission(false);
+                haloap::EffectsSetInMission(false);
                 if (g_original) {
                     g_original(engineObj, 0x0, nullptr);
                     g_original(engineObj, 0xD, nullptr);
@@ -70,6 +73,7 @@ namespace haloap {
             {
                 haloap::SetInMission(false);
             }
+            if (msgType == 0xD) haloap::EffectsSetInMission(false);  // teardown only: 0x1 may also be a plain unpause (unverified)
 
             // Normal processing
             if (g_original) {

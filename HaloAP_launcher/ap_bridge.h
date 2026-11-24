@@ -11,6 +11,7 @@
 #include <functional>
 #include <vector>
 #include "pending_checks.h"
+#include "effect_cursor.h"
 #include "telemetry_log.h"
 #include "kill_tracker.h"
 #include "game_progress.h"
@@ -91,6 +92,12 @@ namespace haloap {
         std::string m_slot;
         std::string m_password;
         
+        // CE effect items (ADR-005): cursor + in-flight list, per seed + slot. Poll thread (OnItemsReceived, OnSlotConnected),
+        // pipe thread (EFFECT_APPLIED) and main thread (ReplayBufferedItems) all touch it: m_effectMutex, a leaf lock.
+        std::mutex m_effectMutex;
+        EffectCursor m_effects;
+        std::atomic<bool> m_effectsEnabled{ false };  // slot_data effect_items
+
         std::mutex m_itemBufferMutex;
         std::vector<int64_t> m_itemBuffer;
         int m_skullsanityTier{ -1 };
