@@ -7,7 +7,9 @@
 // Row = { AP item id, name, apply command, undo command ("" = none), duration in ms (0 = one-shot), undo group, trap }.
 // Commands are HaloScript expressions without the "HS: " prefix (PostHaloScript adds it). Timed effects of the same group
 // replace each other (a later gravity effect cancels the earlier one's timer, so the first undo cannot cut the second short).
-// Not in the table on purpose: 81103 (explosion fallback via damage_object): the damage is not capped, so it can kill from low
+// Not in the table on purpose: 81002 Recharged Shields (retired: object_set_shield writes frac * max shield into a 0..1 fraction,
+// so `1` is a huge overshield and no other value is safe across maps; QA item-effects-a M2).
+// Also not: 81103 (explosion fallback via damage_object): the damage is not capped, so it can kill from low
 // health (research 3.1.6); phase A has no health read to guard it. Phase B items (81003..81010, 81102, 81106) need the frame hook.
 #include <cstddef>
 
@@ -27,7 +29,6 @@ namespace fx {
     // player 0's unit; "(unit (list_get (players) 0))" is the research doc's spelling (2.1: `unit` is the object -> unit cast)
     constexpr EffectDef kEffects[] = {
         { 81001, "Medkit", "(unit_set_current_vitality (unit (list_get (players) 0)) 9999 9999)", "", 0, "", false },
-        { 81002, "Recharged Shields", "(object_set_shield (list_get (players) 0) 1)", "", 0, "", false },
         { 81011, "Invulnerable", "(set cheat_deathless_player true)", "(set cheat_deathless_player false)", 20000, "deathless", false },
         { 81012, "Infinite Ammo", "(set cheat_infinite_ammo true)", "(set cheat_infinite_ammo false)", 30000, "ammo", false },
         { 81013, "Moon Gravity", "(physics_set_gravity 0.4)", "(physics_constants_reset)", 30000, "gravity", false },

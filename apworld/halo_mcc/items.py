@@ -8,21 +8,27 @@ from .mcc_options import SkullSanity
 CE_SKULL_DISABLERS: list[str] = [*GAME_SKULLS["ce"], *NON_SCORING_SKULLS["ce"]]
 
 
+# Classification: good effects are `filler`, not `useful`: kill locations above kill_milestone_progression_percent are EXCLUDED and
+# only accept filler/trap, so a pool of `useful` effects made generation fail ("Not enough filler items for excluded locations").
 # Effect items (ADR-005, docs/research/item-effects.md 4.1/4.2): ids 80000 + game*1000 + k (CE = 81000..81999), good k 1..99,
 # traps k 101..199. Append-only once released: never renumber or rename. Gaps are intended (81003-81010 and 81102/81103/81106+
 # are phase B / not yet built). The DLL runs the matching HaloScript (hooks/effect_table.h; tests/test_effect_ids_agree.py ties
 # the two). Weight = relative chance among the good items (or among the traps) when filler is replaced.
+# Retired before release use (ADR-005 After QA M2): keeps its id and name in the data package (append-only) but is never generated
+# and the DLL has no command for it. `object_set_shield` writes frac * max shield into a 0..1 fraction, so no value is safely "full".
+CE_EFFECT_RETIRED: dict[str, tuple[int, ItemClassification]] = {
+    "Effect: Recharged Shields": (81002, ItemClassification.filler),
+}
 CE_EFFECT_ITEMS: list[tuple[str, int, ItemClassification, int]] = [
-    ("Effect: Medkit", 81001, ItemClassification.useful, 3),
-    ("Effect: Recharged Shields", 81002, ItemClassification.filler, 3),
-    ("Effect: Invulnerable (20 s)", 81011, ItemClassification.useful, 2),
-    ("Effect: Infinite Ammo (30 s)", 81012, ItemClassification.useful, 2),
+    ("Effect: Medkit", 81001, ItemClassification.filler, 3),
+    ("Effect: Invulnerable (20 s)", 81011, ItemClassification.filler, 2),
+    ("Effect: Infinite Ammo (30 s)", 81012, ItemClassification.filler, 2),
     ("Effect: Moon Gravity (30 s)", 81013, ItemClassification.filler, 2),
     ("Trap: Shields Down", 81101, ItemClassification.trap, 3),
     ("Trap: Heavy Gravity (20 s)", 81104, ItemClassification.trap, 2),
     ("Trap: Slow Motion (15 s)", 81105, ItemClassification.trap, 2),
 ]
-EFFECT_BY_NAME = {name: (item_id, cls) for name, item_id, cls, _ in CE_EFFECT_ITEMS}
+EFFECT_BY_NAME = {**CE_EFFECT_RETIRED, **{name: (item_id, cls) for name, item_id, cls, _ in CE_EFFECT_ITEMS}}
 
 
 def effects_enabled(world) -> bool:
@@ -41,7 +47,7 @@ def get_item_name_to_id():
         "filler": 1,
         **{f"{level} Access": data.offset for level, data in LEVEL_DATA.items()},
         **{f"{skull} Skull": SKULL_OFFSET + i + 1 for i, skull in enumerate(CE_SKULL_DISABLERS)},
-        **{name: item_id for name, item_id, _, _ in CE_EFFECT_ITEMS},
+        **{name: item_id for name, (item_id, _) in EFFECT_BY_NAME.items()},
     }
     return item_table
 

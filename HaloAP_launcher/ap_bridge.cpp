@@ -85,10 +85,12 @@ namespace haloap {
             }
         }
         // Effect items taken over but not yet reported applied (the DLL ignores ones it already has queued).
+        std::vector<EffectItem> inFlight;
         {
             std::lock_guard<std::mutex> lock(m_effectMutex);
-            for (const EffectItem& e : m_effects.InFlight()) m_sendToDll(EffectMessage(e.id, e.index));
+            inFlight = m_effects.InFlight();
         }
+        for (const EffectItem& e : inFlight) m_sendToDll(EffectMessage(e.id, e.index));  // outside the lock: a blocking pipe write
         // Also send current completion state
         SendCompletionState();
     }
@@ -228,7 +230,7 @@ namespace haloap {
                 }
                 std::cout << "[ap] effect " << (done->applied ? "applied" : "skipped") << ": item " << done->id << " (index " << done->index << ")"
                           << (known ? "" : " [not in flight]") << "\n";
-                if (m_telemetry) m_telemetry->Effect(m_mission, done->id, done->index, done->applied);
+                if (m_telemetry && known) m_telemetry->Effect(m_mission, done->id, done->index, done->applied);  // a repeated ack is not an event
             } else {
                 std::cerr << "[ap] malformed EFFECT_APPLIED message ignored\n";
             }
@@ -566,7 +568,7 @@ namespace haloap {
                 } else {
                     std::cerr << "[ap] effect item received but this seed has effect_items off: ignored\n";
                 }
-                if (fresh && m_sendToDll) m_sendToDll(EffectMessage(item.item, item.index));
+                if (fresh && m_sendToDll) m_sendToDll(EffectMessage(item.item, item.index));  // outside m_effectMutex
                 else if (item.index < 0 && m_effectsEnabled.load()) std::cerr << "[ap] effect item without an index ignored (starting inventory is never applied)\n";
                 continue;
             }

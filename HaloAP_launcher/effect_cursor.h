@@ -4,8 +4,8 @@
 // pending file):
 //   - the cursor: the highest AP item index already taken over. An effect item with index <= cursor is never forwarded again.
 //   - the in-flight list: items taken over but not yet reported applied by the DLL (EFFECT_APPLIED / EFFECT_SKIPPED). They are
-//     re-sent to a (re)connected DLL, which ignores duplicates, so a game restart or a crash between "received" and "applied"
-//     loses nothing, and an applied effect is never repeated.
+//     re-sent when the DLL first connects in a launcher run (ReplayBufferedItems), and the DLL ignores duplicates. Traps are acked
+//     BEFORE the post (at most once), good effects after it (at least once): a lost ack can repeat a good effect, never a trap.
 // Pure C++20, no AP dependencies. NOT thread-safe: the owner locks.
 #include <cstdint>
 #include <map>

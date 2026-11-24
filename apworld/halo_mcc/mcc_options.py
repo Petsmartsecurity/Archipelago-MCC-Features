@@ -192,8 +192,9 @@ class H2FinalMission(Choice):
 class EffectItems(Toggle):
     """
     EXPERIMENTAL. Replaces the plain "filler" items with effect items that act on the running game when received:
-    a mix of helpful ones (Medkit, Recharged Shields, 20 s Invulnerable, 30 s Infinite Ammo, 30 s Moon Gravity) and traps
-    (Shields Down, 20 s Heavy Gravity, 15 s Slow Motion). Traps never kill you by themselves. Only filler is replaced,
+    a mix of helpful ones (Medkit, 20 s Invulnerable, 30 s Infinite Ammo, 30 s Moon Gravity) and traps
+    (Shields Down, 20 s Heavy Gravity, 15 s Slow Motion). Traps are not meant to kill you, but changed gravity can make a fall
+    more dangerous. Only filler is replaced,
     so no check, mission or skull item changes; only Halo CE (it does nothing if ce_enabled is off).
 
     An effect waits until you are in a mission (and is applied at most one per 10 seconds); effects do not survive a checkpoint

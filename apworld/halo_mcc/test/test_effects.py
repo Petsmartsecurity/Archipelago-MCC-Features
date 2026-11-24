@@ -11,10 +11,10 @@ from .ce_snapshot import build
 
 # Frozen by hand: id -> (name, classification). Append only; never edit a line.
 FROZEN = {
-    81001: ("Effect: Medkit", ItemClassification.useful),
+    81001: ("Effect: Medkit", ItemClassification.filler),
     81002: ("Effect: Recharged Shields", ItemClassification.filler),
-    81011: ("Effect: Invulnerable (20 s)", ItemClassification.useful),
-    81012: ("Effect: Infinite Ammo (30 s)", ItemClassification.useful),
+    81011: ("Effect: Invulnerable (20 s)", ItemClassification.filler),
+    81012: ("Effect: Infinite Ammo (30 s)", ItemClassification.filler),
     81013: ("Effect: Moon Gravity (30 s)", ItemClassification.filler),
     81101: ("Trap: Shields Down", ItemClassification.trap),
     81104: ("Trap: Heavy Gravity (20 s)", ItemClassification.trap),
@@ -36,6 +36,7 @@ class TestEffectItems(MCCTestBase):
             self.assertEqual(self.world.create_item(name).classification, cls, name)
             self.assertEqual(self.world.create_item(name).code, item_id, name)
         self.assertEqual({k for k in table if k.startswith(("Effect:", "Trap:"))}, {n for n, _ in FROZEN.values()})
+        self.assertIn(81002, FROZEN)  # retired but still in the data package
         self.assertTrue(all(81000 <= i < 82000 for i in FROZEN))
         self.assertEqual(len(set(table.values())), len(table), "item ids must be unique")
 
@@ -47,6 +48,14 @@ class TestEffectItems(MCCTestBase):
 
 
 class TestEffectPool(unittest.TestCase):
+    def test_retired_is_never_generated(self):
+        seen = set()
+        for seed in range(1, 6):
+            _, items = pool({"effect_items": True, "kill_milestone_interval": 10}, seed=seed)
+            seen |= {i.name for i in items}
+        self.assertNotIn("Effect: Recharged Shields", seen)
+        self.assertEqual(seen & {n for n, _ in FROZEN.values()}, {n for i, (n, _) in FROZEN.items() if i != 81002})
+
     def test_on_replaces_only_filler(self):
         _, off = pool({})
         mw, on = pool({"effect_items": True})

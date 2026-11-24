@@ -31,6 +31,11 @@ namespace haloap {
         // Set during install, used by GetEngineObject().
         void** g_engineGlobal = nullptr;
 
+        // Captured at install: PostHaloScript refuses to run unless both are still current (QA M3: halo1.dll unloaded or the
+        // engine object replaced between the worker's 2 s checks).
+        HMODULE g_installModule = nullptr;
+        void* g_installEngine = nullptr;
+
         // Identify module containing an address.
         struct ModuleInfo {
             char name[64];
@@ -97,14 +102,15 @@ namespace haloap {
     }
 
     bool CanPostHaloScript() {
-        return g_original && g_engineGlobal && *g_engineGlobal;
+        return g_original && g_engineGlobal && g_installModule && GetModuleHandleA("halo1.dll") == g_installModule &&
+               *g_engineGlobal && *g_engineGlobal == g_installEngine;
     }
 
     bool PostHaloScript(const char* command) {
         ShellLevelLoadFn original = g_original;
         void** global = g_engineGlobal;
         void* engine = global ? *global : nullptr;
-        if (!original || !engine || !command) return false;
+        if (!command || !CanPostHaloScript() || !original || engine != g_installEngine) return false;
         char buf[0x400 + 8];  // the console evaluator takes at most 0x400 characters (research 1.1)
         int n = snprintf(buf, sizeof(buf), "HS: %s", command);
         if (n < 0 || n >= static_cast<int>(sizeof(buf)) - 4) return false;
@@ -179,6 +185,8 @@ namespace haloap {
         }
 
         g_hookTarget = slot9;
+        g_installModule = halo1;
+        g_installEngine = engineObj;
 
         // Step 6: Hook it.
         MH_STATUS status = MH_CreateHook(slot9, (void*)DetourShellLevelLoad,
@@ -204,6 +212,8 @@ namespace haloap {
             MH_RemoveHook(g_hookTarget);
             g_hookTarget = nullptr;
         }
+        g_installModule = nullptr;
+        g_installEngine = nullptr;
         g_original = nullptr;
         g_pipe = nullptr;
         g_engineGlobal = nullptr;
