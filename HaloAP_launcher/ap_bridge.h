@@ -142,6 +142,7 @@ namespace haloap {
         std::set<int64_t> m_slotLocations;  // server checked + missing; empty until the slot connects
         std::string m_lastSeed;             // seed of the last slot connect (kill history resets on a change)
         void FeedKillTracker(const AiEvent& ev);
+        void FeedSwarm(const SwarmEvent& ev);
         void SendKillChecks(const std::vector<int64_t>& earned);  // caller holds m_killMutex
     };
 

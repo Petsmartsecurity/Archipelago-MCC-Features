@@ -61,6 +61,7 @@ class MCCWorld(World):
             # skull items are CE-only: with CE off the launcher must not force skulls nothing can release (QA 8.H2.6 M2)
             "skullsanity": self.options.skullsanity.value if self.options.ce_enabled else 0,
             "kill_milestone_interval": self.options.kill_milestone_interval.value,
+            "kill_infection_interval": self.options.kill_infection_interval.value,
             "kill_species_checks": int(bool(self.options.kill_species_checks.value)),
             "ce_enabled": int(bool(self.options.ce_enabled.value)),
             "h2_enabled": int(bool(self.options.h2_enabled.value)),

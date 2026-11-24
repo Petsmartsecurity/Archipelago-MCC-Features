@@ -1,4 +1,8 @@
+import os
+
 from Options import OptionError
+
+from .mcc_options import EXPERIMENTAL_ENV
 
 from .data.levels import LEVEL_DATA
 from .data.skulls import *
@@ -9,6 +13,9 @@ H2_RANDOM = 16  # H2FinalMission.option_random_choice; the other values are the 
 def generate_early(world):
     ce = bool(world.options.ce_enabled.value)
     h2 = bool(world.options.h2_enabled.value)
+    if h2 and os.environ.get(EXPERIMENTAL_ENV) != "1":
+        raise OptionError(f"{world.player_name}: h2_enabled is experimental (Halo 2 only observes in the game for now) and "
+                          f"is not available in release seeds; remove it, or set {EXPERIMENTAL_ENV}=1 to generate a test seed")
     if not (ce or h2):
         raise OptionError(f"{world.player_name}: enable at least one game (ce_enabled or h2_enabled)")
 

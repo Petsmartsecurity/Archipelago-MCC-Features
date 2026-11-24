@@ -59,6 +59,12 @@ namespace haloap {
         SendKillChecks(m_killTracker->OnEvent(ev));
     }
 
+    // Pipe thread. Same as FeedKillTracker for a Flood infection-form death (PLAN 6.R).
+    void APBridge::FeedSwarm(const SwarmEvent& ev) {
+        std::lock_guard<std::mutex> lock(m_killMutex);
+        SendKillChecks(m_killTracker->OnSwarm(ev));
+    }
+
     APBridge::~APBridge() {
         Stop();
     }
@@ -200,6 +206,7 @@ namespace haloap {
             // Log-only (PLAN 5.7): telemetry line, never the kill tracker, locations or goal.
             if (auto sw = ParseSwarmEvent(message)) {
                 if (m_telemetry) m_telemetry->Swarm(m_mission, *sw);
+                FeedSwarm(*sw);  // infection-form checks (PLAN 6.R): only if the slot has kill_infection_interval > 0
             } else {
                 if (m_telemetry) m_telemetry->Rejected();
                 std::cerr << "[ap] malformed SWARM message ignored\n";
@@ -459,9 +466,13 @@ namespace haloap {
         // Missing keys = 0 / off (a seed from an older apworld has no kill checks).
         {
             int interval = 0;
+            int infection = 0;
             bool speciesOn = false;
             if (slotData.contains("kill_milestone_interval") && slotData["kill_milestone_interval"].is_number_integer()) {
                 interval = slotData["kill_milestone_interval"].get<int>();
+            }
+            if (slotData.contains("kill_infection_interval") && slotData["kill_infection_interval"].is_number_integer()) {
+                infection = slotData["kill_infection_interval"].get<int>();
             }
             if (slotData.contains("kill_species_checks") && slotData["kill_species_checks"].is_number_integer()) {
                 speciesOn = slotData["kill_species_checks"].get<int>() != 0;
@@ -475,9 +486,9 @@ namespace haloap {
             if (!m_lastSeed.empty() && seed != m_lastSeed) m_killTracker->ResetHistory();
             m_lastSeed = seed;
             m_slotLocations = std::move(slotLocs);
-            std::cout << "[ap] kill_milestone_interval = " << interval << ", kill_species_checks = " << speciesOn << "\n";
+            std::cout << "[ap] kill_milestone_interval = " << interval << ", kill_infection_interval = " << infection << ", kill_species_checks = " << speciesOn << "\n";
             // Everything earned so far under these settings (kills before the slot connected) is sent now.
-            SendKillChecks(m_killTracker->SetConfig(interval, speciesOn));
+            SendKillChecks(m_killTracker->SetConfig(interval, speciesOn, infection));
         }
         m_slotConnected.store(true);
         m_flushRequested.store(true);

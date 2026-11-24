@@ -66,3 +66,18 @@ CE_KILL_COUNTS: Dict[str, Tuple[int, int, int]] = {
     'Keyes': (9, 315, 377),
     'The Maw': (10, 312, 369),
 }
+
+# mission name -> (mission_no, measured counted kills in one complete Normal run, measured infection-form
+# (Flood swarm) deaths in one complete run; 0 = no data). From data/h1/kill_basis.json (tools/h1/kill_basis.py).
+CE_KILL_BASIS: Dict[str, Tuple[int, int, int]] = {
+    'The Pillar of Autumn': (1, 133, 0),
+    'Halo (CE)': (2, 166, 0),
+    'The Truth and Reconciliation': (3, 305, 0),
+    'The Silent Cartographer': (4, 144, 0),
+    'Assault on the Control Room': (5, 384, 0),
+    '343 Guilty Spark': (6, 169, 0),
+    'The Library': (7, 484, 872),
+    'Two Betrayals': (8, 381, 240),
+    'Keyes': (9, 356, 270),
+    'The Maw': (10, 185, 349),
+}

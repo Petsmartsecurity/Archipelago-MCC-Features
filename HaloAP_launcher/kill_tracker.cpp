@@ -9,6 +9,7 @@ namespace haloap {
 
     void KillTracker::OnMissionLoad(const std::string& code) {
         m_seen.clear();
+        m_seenSwarm.clear();
         auto it = m_tables.find(code);
         m_cur = (it == m_tables.end()) ? nullptr : &it->second;
     }
@@ -49,8 +50,24 @@ namespace haloap {
         return earned;
     }
 
-    std::vector<int64_t> KillTracker::SetConfig(int interval, bool species) {
+    std::vector<int64_t> KillTracker::OnSwarm(const SwarmEvent& ev) {
+        std::vector<int64_t> earned;
+        if (!m_cur || m_cur->swarmMax <= 0) return earned;
+        if (ev.ekf != 0xFF && (ev.ekf & 0x20)) return earned;  // scripted unit_kill, like CE kills
+        if (!m_seenSwarm.insert(ev.unit).second) return earned;  // same form already counted this run
+        const int count = SwarmCount();
+        int& peak = m_swarmPeak[m_cur->missionNo];
+        if (count > peak) peak = count;
+        if (m_infection > 0 && count % m_infection == 0 && count <= kMaxMilestoneCount) {
+            int64_t id = InfectionId(m_cur->missionNo, count);
+            if (m_emitted.insert(id).second) earned.push_back(id);
+        }
+        return earned;
+    }
+
+    std::vector<int64_t> KillTracker::SetConfig(int interval, bool species, int infection) {
         m_interval = interval < 0 ? 0 : (interval > 100 ? 100 : interval);
+        m_infection = infection < 0 ? 0 : (infection > 100 ? 100 : infection);
         m_species = species;
         m_emitted.clear();
         std::vector<int64_t> earned;
@@ -60,6 +77,15 @@ namespace haloap {
                 if (it == m_peak.end()) continue;
                 for (int k = m_interval; k <= it->second && k <= kMaxMilestoneCount; k += m_interval) {
                     if (m_emitted.insert(MilestoneId(table.missionNo, k)).second) earned.push_back(MilestoneId(table.missionNo, k));
+                }
+            }
+        }
+        if (m_infection > 0) {
+            for (const auto& [code, table] : m_tables) {
+                auto it = m_swarmPeak.find(table.missionNo);
+                if (it == m_swarmPeak.end()) continue;
+                for (int k = m_infection; k <= it->second && k <= kMaxMilestoneCount; k += m_infection) {
+                    if (m_emitted.insert(InfectionId(table.missionNo, k)).second) earned.push_back(InfectionId(table.missionNo, k));
                 }
             }
         }

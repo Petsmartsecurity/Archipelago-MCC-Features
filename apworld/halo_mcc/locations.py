@@ -2,10 +2,9 @@ from BaseClasses import ItemClassification, Location, LocationProgressType
 
 from .data.halo_ce_location_data import CE_LOCATION_DATA
 from .data.halo2_location_data import H2_CHAPTERS
-from .data.halo_ce_kill_data import CE_KILL_DATA, CE_KILL_COUNTS
-from .data.kill_ids import datapackage_max_k, milestone_cap, milestone_id, milestone_ks, milestone_name
-
-SAFE_PERCENT = 50  # milestones above this percent of a mission's enemies are EXCLUDED (filler only)
+from .data.halo_ce_kill_data import CE_KILL_DATA, CE_KILL_COUNTS, CE_KILL_BASIS
+from .data.kill_ids import (basis_for, datapackage_milestone_max_k, infection_id, infection_ks, infection_name,
+                            milestone_cap, milestone_id, milestone_ks, milestone_name, MAX_PERCENT)
 from .data.levels import LEVEL_DATA
 
 #create our own location object that gets everything from the base location object and change game
@@ -24,7 +23,11 @@ def get_location_name_to_id():
         **{name: kill_id for name, (_, _, kill_id) in CE_KILL_DATA.items()},
         **{milestone_name(level, k): milestone_id(mission_no, k)
            for level, (mission_no, normal, insane) in CE_KILL_COUNTS.items()
-           for k in range(1, datapackage_max_k(normal, insane) + 1)},
+           for k in range(1, datapackage_milestone_max_k(normal, insane, CE_KILL_BASIS[level][1]) + 1)},
+        # infection-form checks (ADR-001 Amendment B): every k any seed can ask for, in missions with swarm data
+        **{infection_name(level, k): infection_id(mission_no, k)
+           for level, (mission_no, _measured, swarm) in CE_KILL_BASIS.items()
+           for k in range(1, milestone_cap(swarm, MAX_PERCENT) + 1)},
     }
     return location_map
 
@@ -64,18 +67,25 @@ def create_locations(world):
         # (the goal mission has no "Complete" location, but its kill checks are still created)
         interval = world.options.kill_milestone_interval.value
         percent = world.options.kill_milestone_max_percent.value
-        legendary = world.options.kill_difficulty.value == 1
+        progression = world.options.kill_milestone_progression_percent.value
+        difficulty = world.options.kill_difficulty.current_key
+        infection = world.options.kill_infection_interval.value
         for level, (mission_no, normal, insane) in CE_KILL_COUNTS.items():
             region = world.get_region(level)
-            # `normal` must be reachable on every difficulty, and some missions (a30, a50) have fewer enemies on
-            # Legendary than on Normal, so it uses the smaller count
-            count = insane if legendary else min(normal, insane)
+            # the measured per-run count of this mission (kill_basis.json); see kill_ids.basis_for for the
+            # provisional Heroic / Legendary rules
+            count = basis_for(difficulty, normal, insane, CE_KILL_BASIS[level][1])
             for k in milestone_ks(count, interval, percent):
                 loc = MCCLocation(world.player, milestone_name(level, k), milestone_id(mission_no, k), region)
-                # Above half the mission's enemies, the counts don't model skipped encounters or squads that never
-                # spawn, so those milestones hold no progression until reachability data exists (QA 5.4 M1)
-                if k > milestone_cap(count, SAFE_PERCENT):
+                # The per-mission count restarts every run, and a player who skips sections ends below the measured
+                # count, so milestones above `progression` percent hold no progression (filler only; QA 5.4 M1)
+                if k > milestone_cap(count, progression):
                     loc.progress_type = LocationProgressType.EXCLUDED
+                region.locations.append(loc)
+            # Flood infection forms: only missions with swarm data; never progression (the numbers vary with play style)
+            for k in infection_ks(CE_KILL_BASIS[level][2], infection):
+                loc = MCCLocation(world.player, infection_name(level, k), infection_id(mission_no, k), region)
+                loc.progress_type = LocationProgressType.EXCLUDED
                 region.locations.append(loc)
         if world.options.kill_species_checks.value:
             for name, (level, _, kill_id) in CE_KILL_DATA.items():

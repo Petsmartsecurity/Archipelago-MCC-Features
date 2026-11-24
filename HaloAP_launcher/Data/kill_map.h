@@ -15,7 +15,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{1486, "warthog"}, {1609, "scorpion"}, {1745, "captain"}, {2411, "crewman"}, {2413, "crewman"}, {2415, "marine_armored"}, {2417, "marine_armored"}, {2419, "elite"}, {2651, "elite"}, {2653, "crewman"}, {2654, "crewman"}, {2655, "grunt"}, {2880, "grunt"}, {2882, "crewman"}, {2883, "crewman"}, {2884, "elite"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {2419, 2651, 2655, 2880, 2884}
+            {2419, 2651, 2655, 2880, 2884},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            133, 0
         }},
         {"a30", {
             2,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -26,7 +28,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{1364, "warthog"}, {1506, "banshee"}, {1674, "c gun turret"}, {1695, "c_dropship"}, {2091, "marine"}, {2106, "marine"}, {2108, "crewman"}, {2158, "grunt"}, {2292, "grunt"}, {2294, "elite"}, {2472, "elite"}, {2474, "jackal"}, {2565, "jackal"}, {2568, "grunt"}, {2569, "grunt"}, {2647, "elite"}, {2648, "marine_wounded"}, {2650, "marine_armored"}, {2652, "marine_armored"}, {2654, "marine_armored"}, {2656, "marine_armored"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {1695, 2158, 2292, 2294, 2472, 2474, 2565, 2568, 2569, 2647}
+            {1695, 2158, 2292, 2294, 2472, 2474, 2565, 2568, 2569, 2647},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            166, 0
         }},
         {"a50", {
             3,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -37,7 +41,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{1783, "c gun turret"}, {1802, "c_dropship"}, {1961, "wraith"}, {2234, "elite"}, {2245, "elite"}, {2246, "elite"}, {2248, "elite"}, {2250, "elite"}, {2251, "elite"}, {2252, "grunt"}, {2473, "grunt"}, {2475, "grunt"}, {2476, "grunt"}, {2477, "hunter"}, {2479, "hunter"}, {2480, "jackal"}, {2570, "jackal"}, {2573, "marine_armored"}, {2575, "marine_armored"}, {2577, "captain_ingame"}, {2579, "marine"}, {2582, "elite"}, {2782, "elite"}, {2804, "elite"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {1802, 2234, 2245, 2246, 2248, 2250, 2251, 2252, 2473, 2475, 2476, 2477, 2479, 2480, 2570, 2582, 2782, 2804}
+            {1802, 2234, 2245, 2246, 2248, 2250, 2251, 2252, 2473, 2475, 2476, 2477, 2479, 2480, 2570, 2582, 2782, 2804},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            305, 0
         }},
         {"b30", {
             4,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -48,7 +54,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{1728, "warthog"}, {1865, "banshee"}, {1985, "c gun turret"}, {2005, "c_dropship"}, {2040, "ghost"}, {2395, "grunt"}, {2529, "grunt"}, {2531, "elite"}, {2533, "elite"}, {2535, "marine_armored"}, {2537, "marine_armored"}, {2539, "hunter"}, {2631, "hunter"}, {2632, "jackal"}, {2720, "jackal"}, {2723, "elite"}, {2734, "elite"}, {2735, "elite"}, {2812, "grunt"}, {2813, "grunt"}, {2814, "engineer"}, {2834, "elite"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {2005, 2395, 2529, 2531, 2533, 2539, 2631, 2632, 2720, 2723, 2734, 2735, 2812, 2813, 2814, 2834}
+            {2005, 2395, 2529, 2531, 2533, 2539, 2631, 2632, 2720, 2723, 2734, 2735, 2812, 2813, 2814, 2834},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            144, 0
         }},
         {"b40", {
             5,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -59,7 +67,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{2303, "warthog"}, {2420, "banshee"}, {2462, "scorpion"}, {2530, "c gun turret"}, {2561, "c_dropship"}, {2594, "ghost"}, {2625, "wraith"}, {3047, "elite"}, {3058, "elite"}, {3059, "elite"}, {3061, "elite"}, {3062, "elite"}, {3064, "elite"}, {3065, "grunt"}, {3067, "grunt"}, {3069, "grunt"}, {3070, "grunt"}, {3071, "hunter"}, {3073, "hunter"}, {3074, "jackal"}, {3076, "jackal"}, {3079, "marine_armored"}, {3081, "marine_armored"}, {3083, "marine_armored"}, {3084, "marine_armored"}, {3085, "elite"}, {3087, "elite"}, {3108, "elite"}, {3110, "marine_armored"}, {3112, "marine_armored"}, {3113, "marine_armored"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {2561, 3047, 3058, 3059, 3061, 3062, 3064, 3065, 3067, 3069, 3070, 3071, 3073, 3074, 3076, 3085, 3087, 3108}
+            {2561, 3047, 3058, 3059, 3061, 3062, 3064, 3065, 3067, 3069, 3070, 3071, 3073, 3074, 3076, 3085, 3087, 3108},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            384, 0
         }},
         {"c10", {
             6,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -70,7 +80,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{1583, "flood_infection"}, {1585, "marine"}, {1587, "marine"}, {1599, "captain"}, {1679, "monitor"}, {2320, "c gun turret"}, {2724, "grunt"}, {2726, "grunt"}, {2728, "grunt"}, {2730, "grunt"}, {2731, "grunt"}, {2732, "grunt"}, {2733, "jackal"}, {2735, "jackal"}, {2738, "sentinel"}, {2790, "sentinel"}, {2792, "floodcombat elite"}, {2794, "floodcombat elite"}, {2795, "floodcombat elite"}, {2796, "floodcombat elite"}, {2797, "floodcombat elite"}, {2798, "floodcombat elite"}, {2799, "flood_infection"}, {2804, "floodcombat_human"}, {2820, "floodcombat_human"}, {2821, "floodcombat_human"}, {2822, "floodcombat_human"}, {2823, "floodcombat_human"}, {2824, "floodcombat_human"}, {2825, "marine_suicidal"}, {2826, "floodcombat elite"}, {2827, "floodcombat_human"}, {2828, "floodcombat_human"}, {2901, "marine"}, {2903, "marine_armored"}, {2926, "marine"}, {2927, "marine"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {2724, 2726, 2728, 2730, 2731, 2732, 2733, 2735, 2738, 2790, 2792, 2794, 2795, 2796, 2797, 2798, 2804, 2820, 2821, 2822, 2823, 2824, 2826, 2827, 2828}
+            {2724, 2726, 2728, 2730, 2731, 2732, 2733, 2735, 2738, 2790, 2792, 2794, 2795, 2796, 2797, 2798, 2804, 2820, 2821, 2822, 2823, 2824, 2826, 2827, 2828},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            169, 0
         }},
         {"c20", {
             7,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -81,7 +93,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{499, "floodcombat elite"}, {695, "floodcombat elite"}, {794, "floodcombat elite"}, {882, "floodcombat elite"}, {883, "floodcombat elite"}, {969, "floodcombat elite"}, {1043, "floodcombat elite"}, {1138, "floodcombat elite"}, {1139, "floodcombat elite"}, {1216, "floodcarrier"}, {1244, "flood_infection"}, {1264, "sentinel"}, {1316, "sentinel"}, {1318, "floodcombat_human"}, {1334, "floodcombat_human"}, {1335, "monitor"}, {1337, "floodcombat_human"}, {1338, "floodcombat_human"}, {1339, "floodcombat_human"}, {1340, "floodcombat_human"}, {1341, "floodcombat_human"}, {1342, "floodcombat_human"}, {1343, "floodcombat_human"}, {1486, "sentinel"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {499, 695, 794, 882, 883, 969, 1043, 1138, 1139, 1216, 1264, 1316, 1318, 1334, 1337, 1338, 1339, 1340, 1341, 1342, 1343, 1486}
+            {499, 695, 794, 882, 883, 969, 1043, 1138, 1139, 1216, 1264, 1316, 1318, 1334, 1337, 1338, 1339, 1340, 1341, 1342, 1343, 1486},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            484, 872
         }},
         {"c40", {
             8,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -92,7 +106,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{515, "monitor"}, {1395, "banshee"}, {1502, "c gun turret"}, {1534, "c_dropship"}, {1567, "ghost"}, {1599, "wraith"}, {1674, "warthog"}, {2332, "sentinel"}, {2334, "sentinel"}, {2336, "elite"}, {2347, "elite"}, {2349, "elite"}, {2423, "elite"}, {2424, "grunt"}, {2426, "grunt"}, {2427, "grunt"}, {2429, "grunt"}, {2430, "grunt"}, {2443, "jackal"}, {2534, "jackal"}, {2537, "hunter"}, {2625, "hunter"}, {2626, "flood_infection"}, {2648, "floodcarrier"}, {2673, "floodcombat elite"}, {2695, "floodcombat elite"}, {2696, "floodcombat elite"}, {2697, "floodcombat elite"}, {2698, "floodcombat elite"}, {2699, "floodcombat elite"}, {2700, "floodcombat elite"}, {2701, "floodcombat elite"}, {2702, "floodcombat elite"}, {2703, "floodcombat_human"}, {2705, "floodcombat_human"}, {2706, "floodcombat_human"}, {2707, "floodcombat_human"}, {2708, "floodcombat_human"}, {2709, "floodcombat_human"}, {2710, "floodcombat_human"}, {2711, "floodcombat_human"}, {2712, "sentinel"}, {2713, "elite"}, {2733, "grunt"}, {2734, "elite"}, {2736, "elite"}, {2738, "sentinel"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {1534, 2332, 2334, 2336, 2347, 2349, 2423, 2424, 2426, 2427, 2429, 2430, 2443, 2534, 2537, 2625, 2648, 2673, 2695, 2696, 2697, 2698, 2699, 2700, 2701, 2702, 2703, 2705, 2706, 2707, 2708, 2709, 2710, 2711, 2712, 2713, 2733, 2734, 2736, 2738}
+            {1534, 2332, 2334, 2336, 2347, 2349, 2423, 2424, 2426, 2427, 2429, 2430, 2443, 2534, 2537, 2625, 2648, 2673, 2695, 2696, 2697, 2698, 2699, 2700, 2701, 2702, 2703, 2705, 2706, 2707, 2708, 2709, 2710, 2711, 2712, 2713, 2733, 2734, 2736, 2738},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            381, 240
         }},
         {"d20", {
             9,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -103,7 +119,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{553, "c gun turret"}, {671, "banshee"}, {787, "ghost"}, {813, "c_dropship"}, {935, "elite"}, {1075, "elite"}, {1077, "elite"}, {1156, "grunt"}, {1382, "grunt"}, {1384, "grunt"}, {1385, "grunt"}, {1386, "jackal"}, {1478, "jackal"}, {1481, "hunter"}, {1573, "hunter"}, {1574, "floodcombat elite"}, {1631, "floodcombat elite"}, {1632, "floodcombat elite"}, {1707, "floodcombat elite"}, {1708, "floodcombat elite"}, {1709, "floodcombat elite"}, {1796, "floodcombat elite"}, {1797, "floodcombat elite"}, {1869, "floodcombat elite"}, {1870, "floodcarrier"}, {1894, "flood_infection"}, {1913, "floodcombat_human"}, {1929, "floodcombat_human"}, {1930, "elite"}, {1931, "elite"}, {1942, "elite"}, {1943, "grunt"}, {1946, "grunt"}, {1953, "floodcombat_human"}, {1954, "floodcombat_human"}, {1955, "floodcombat_human"}, {1956, "floodcombat_human"}, {1957, "floodcombat_human"}, {1958, "floodcombat_human"}, {1959, "floodcombat_human"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {813, 935, 1075, 1077, 1156, 1382, 1384, 1385, 1386, 1478, 1481, 1573, 1574, 1631, 1632, 1707, 1708, 1709, 1796, 1797, 1869, 1870, 1913, 1929, 1930, 1931, 1942, 1943, 1946, 1953, 1954, 1955, 1956, 1957, 1958, 1959}
+            {813, 935, 1075, 1077, 1156, 1382, 1384, 1385, 1386, 1478, 1481, 1573, 1574, 1631, 1632, 1707, 1708, 1709, 1796, 1797, 1869, 1870, 1913, 1929, 1930, 1931, 1942, 1943, 1946, 1953, 1954, 1955, 1956, 1957, 1958, 1959},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            356, 270
         }},
         {"d40", {
             10,  // mission_no (milestone IDs are a formula of it: kill_tracker.h)
@@ -114,7 +132,9 @@ inline const KillTables& GetKillTables() {
             // variant tag index -> species
             {{761, "flood_infection"}, {1341, "grunt"}, {1446, "monitor"}, {1467, "captain"}, {1515, "floodcombat elite"}, {1570, "banshee"}, {1705, "warthog"}, {1803, "c gun turret"}, {1834, "c_dropship"}, {1842, "elite"}, {2367, "floodcombat elite"}, {2368, "floodcombat elite"}, {2369, "floodcombat elite"}, {2370, "floodcombat elite"}, {2371, "floodcombat elite"}, {2372, "floodcombat elite"}, {2373, "floodcombat elite"}, {2374, "floodcarrier"}, {2376, "floodcombat_human"}, {2378, "floodcombat_human"}, {2379, "floodcombat_human"}, {2380, "floodcombat_human"}, {2381, "floodcombat_human"}, {2382, "floodcombat_human"}, {2383, "floodcombat_human"}, {2384, "hunter"}, {2476, "hunter"}, {2477, "grunt"}, {2484, "elite"}, {2485, "monitor"}, {2488, "sentinel"}, {2490, "sentinel"}, {2491, "floodcombat elite"}, {2493, "sentinel"}, {2494, "sentinel"}},
             // hostile countable variant tag indices: only these deaths/erases count as kills
-            {1341, 1515, 1834, 1842, 2367, 2368, 2369, 2370, 2371, 2372, 2373, 2374, 2376, 2378, 2379, 2380, 2381, 2382, 2383, 2384, 2476, 2477, 2484, 2488, 2490, 2491, 2493, 2494}
+            {1341, 1515, 1834, 1842, 2367, 2368, 2369, 2370, 2371, 2372, 2373, 2374, 2376, 2378, 2379, 2380, 2381, 2382, 2383, 2384, 2476, 2477, 2484, 2488, 2490, 2491, 2493, 2494},
+            // measured Normal kills in one complete run (tools/h1/kill_basis.py), measured infection-form max (0 = no data: no infection checks)
+            185, 349
         }},
     };
     return tables;

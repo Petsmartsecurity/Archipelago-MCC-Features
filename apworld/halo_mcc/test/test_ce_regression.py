@@ -11,7 +11,7 @@ from .bases import MCCTestBase
 from .ce_snapshot import snapshot
 
 GOLDEN = json.loads((pathlib.Path(__file__).parent / "ce_golden.json").read_text())
-NEW_SLOT_KEYS = {"ce_enabled", "h2_enabled", "h2_final_mission"}
+NEW_SLOT_KEYS = {"ce_enabled", "h2_enabled", "h2_final_mission", "kill_infection_interval"}
 
 
 class TestCEOnlyUnchanged(unittest.TestCase):
@@ -20,7 +20,8 @@ class TestCEOnlyUnchanged(unittest.TestCase):
             with self.subTest(case=key), contextlib.redirect_stdout(io.StringIO()):
                 got = snapshot(case["options"], case["seed"])
             want = case["snap"]
-            self.assertEqual({k: v for k, v in got["slot"].items() if k not in NEW_SLOT_KEYS}, want["slot"])
+            self.assertEqual({k: v for k, v in got["slot"].items() if k not in NEW_SLOT_KEYS},
+                             {k: v for k, v in want["slot"].items() if k not in NEW_SLOT_KEYS})
             self.assertEqual(got["slot"]["ce_enabled"], 1)
             self.assertEqual((got["slot"]["h2_enabled"], got["slot"]["h2_final_mission"]), (0, ""))
             got = {k: v for k, v in got.items() if k != "slot"}

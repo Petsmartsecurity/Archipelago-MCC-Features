@@ -705,8 +705,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "a2bae2e8b2fe3fb1",
-    "locs": "d62842e1f24aa680",
+    "items": "163ff5b93029e619",
+    "locs": "eb54cf6823059164",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -718,17 +718,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 107,
-    "n_locs": 107,
+    "n_items": 101,
+    "n_locs": 101,
     "n_probes": 28,
-    "placed": "5d24787d73382d72",
+    "placed": "8de7dfc29da716ed",
     "precollected": [
      "The Pillar of Autumn Access"
     ],
     "probes": "921d2e390e56a992",
     "rng_next": 0.8474337369372327,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -745,8 +749,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "c9bfcc2f38dc1ee7",
-    "locs": "d62842e1f24aa680",
+    "items": "f7b299355501f095",
+    "locs": "eb54cf6823059164",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -758,17 +762,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 107,
-    "n_locs": 107,
+    "n_items": 101,
+    "n_locs": 101,
     "n_probes": 28,
-    "placed": "cc7a7e52f6790870",
+    "placed": "dd97d2d1081af03b",
     "precollected": [
      "Two Betrayals Access"
     ],
     "probes": "34e4d1cb83177291",
     "rng_next": 0.7940590105180981,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -785,8 +793,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "8f668032b67d136e",
-    "locs": "d62842e1f24aa680",
+    "items": "df7032cde593419a",
+    "locs": "eb54cf6823059164",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -798,17 +806,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 107,
-    "n_locs": 107,
+    "n_items": 101,
+    "n_locs": 101,
     "n_probes": 28,
-    "placed": "f280d2d844649991",
+    "placed": "6216ac4e03633354",
     "precollected": [
      "343 Guilty Spark Access"
     ],
     "probes": "2daf1028b7a12bdc",
     "rng_next": 0.9478274870593494,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -825,8 +837,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "8f668032b67d136e",
-    "locs": "d62842e1f24aa680",
+    "items": "df7032cde593419a",
+    "locs": "eb54cf6823059164",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -838,17 +850,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 107,
-    "n_locs": 107,
+    "n_items": 101,
+    "n_locs": 101,
     "n_probes": 28,
-    "placed": "4812ebeba2c7387f",
+    "placed": "f00ffbb1f2bc636f",
     "precollected": [
      "343 Guilty Spark Access"
     ],
     "probes": "2daf1028b7a12bdc",
     "rng_next": 0.5442292252959519,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -865,8 +881,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "a97ecb6150e3a156",
-    "locs": "d62842e1f24aa680",
+    "items": "54995e39c09a30be",
+    "locs": "eb54cf6823059164",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -878,17 +894,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 107,
-    "n_locs": 107,
+    "n_items": 101,
+    "n_locs": 101,
     "n_probes": 28,
-    "placed": "1f5bbb6febb5d58b",
+    "placed": "188bdbf9609827b4",
     "precollected": [
      "Keyes Access"
     ],
     "probes": "5524d0d9b93400d2",
     "rng_next": 0.1031660342307158,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -905,8 +925,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "8a3fad12d2e75ab6",
-    "locs": "d62842e1f24aa680",
+    "items": "cba0821451979082",
+    "locs": "eb54cf6823059164",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -918,17 +938,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 107,
-    "n_locs": 107,
+    "n_items": 101,
+    "n_locs": 101,
     "n_probes": 28,
-    "placed": "8338ba642ee0e18d",
+    "placed": "bf59023db2c3bca7",
     "precollected": [
      "Halo (CE) Access"
     ],
     "probes": "ccca8bfd1dc7ec42",
     "rng_next": 0.7417869892607294,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -936,17 +960,17 @@
     "start": "Halo (CE)"
    }
   },
-  "kills_25_max90/1": {
+  "kills_25_max80/1": {
    "options": {
     "kill_milestone_interval": 25,
-    "kill_milestone_max_percent": 90
+    "kill_milestone_max_percent": 80
    },
    "seed": 1,
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "687a454450639623",
-    "locs": "3eadb4153bb8d5ea",
+    "items": "b559122e5762a2b8",
+    "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -958,17 +982,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 155,
-    "n_locs": 155,
+    "n_items": 134,
+    "n_locs": 134,
     "n_probes": 28,
-    "placed": "fe3d72c1d0daea75",
+    "placed": "c4f797a4c600447b",
     "precollected": [
      "The Pillar of Autumn Access"
     ],
     "probes": "921d2e390e56a992",
     "rng_next": 0.8474337369372327,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -976,17 +1004,17 @@
     "start": "The Pillar of Autumn"
    }
   },
-  "kills_25_max90/123456": {
+  "kills_25_max80/123456": {
    "options": {
     "kill_milestone_interval": 25,
-    "kill_milestone_max_percent": 90
+    "kill_milestone_max_percent": 80
    },
    "seed": 123456,
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "2bde84432e0626ad",
-    "locs": "3eadb4153bb8d5ea",
+    "items": "16f58a68c39a564d",
+    "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -998,17 +1026,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 155,
-    "n_locs": 155,
+    "n_items": 134,
+    "n_locs": 134,
     "n_probes": 28,
-    "placed": "0346dc73c2a522c5",
+    "placed": "a0a7292f65c07857",
     "precollected": [
      "Two Betrayals Access"
     ],
     "probes": "34e4d1cb83177291",
     "rng_next": 0.7940590105180981,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -1016,17 +1048,17 @@
     "start": "Two Betrayals"
    }
   },
-  "kills_25_max90/2": {
+  "kills_25_max80/2": {
    "options": {
     "kill_milestone_interval": 25,
-    "kill_milestone_max_percent": 90
+    "kill_milestone_max_percent": 80
    },
    "seed": 2,
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "074175a050b4e785",
-    "locs": "3eadb4153bb8d5ea",
+    "items": "52dd15596568a772",
+    "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1038,17 +1070,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 155,
-    "n_locs": 155,
+    "n_items": 134,
+    "n_locs": 134,
     "n_probes": 28,
-    "placed": "6bf19b637bd5284a",
+    "placed": "775c321fec558d0f",
     "precollected": [
      "343 Guilty Spark Access"
     ],
     "probes": "2daf1028b7a12bdc",
     "rng_next": 0.9478274870593494,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -1056,17 +1092,17 @@
     "start": "343 Guilty Spark"
    }
   },
-  "kills_25_max90/3": {
+  "kills_25_max80/3": {
    "options": {
     "kill_milestone_interval": 25,
-    "kill_milestone_max_percent": 90
+    "kill_milestone_max_percent": 80
    },
    "seed": 3,
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "074175a050b4e785",
-    "locs": "3eadb4153bb8d5ea",
+    "items": "52dd15596568a772",
+    "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1078,17 +1114,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 155,
-    "n_locs": 155,
+    "n_items": 134,
+    "n_locs": 134,
     "n_probes": 28,
-    "placed": "f7232f4a34768e1a",
+    "placed": "8ede6ed2361ba46b",
     "precollected": [
      "343 Guilty Spark Access"
     ],
     "probes": "2daf1028b7a12bdc",
     "rng_next": 0.5442292252959519,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -1096,17 +1136,17 @@
     "start": "343 Guilty Spark"
    }
   },
-  "kills_25_max90/4": {
+  "kills_25_max80/4": {
    "options": {
     "kill_milestone_interval": 25,
-    "kill_milestone_max_percent": 90
+    "kill_milestone_max_percent": 80
    },
    "seed": 4,
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "503d94b5f0a56d33",
-    "locs": "3eadb4153bb8d5ea",
+    "items": "333631a8c45e42b0",
+    "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1118,17 +1158,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 155,
-    "n_locs": 155,
+    "n_items": 134,
+    "n_locs": 134,
     "n_probes": 28,
-    "placed": "36893b67744b1808",
+    "placed": "5f3df4c4c3c48d78",
     "precollected": [
      "Keyes Access"
     ],
     "probes": "5524d0d9b93400d2",
     "rng_next": 0.1031660342307158,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
      "skullsanity": 1
@@ -1136,17 +1180,17 @@
     "start": "Keyes"
    }
   },
-  "kills_25_max90/5": {
+  "kills_25_max80/5": {
    "options": {
     "kill_milestone_interval": 25,
-    "kill_milestone_max_percent": 90
+    "kill_milestone_max_percent": 80
    },
    "seed": 5,
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "de96779821af6a28",
-    "locs": "3eadb4153bb8d5ea",
+    "items": "3cabb43feadd29ec",
+    "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1158,19 +1202,299 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 155,
-    "n_locs": 155,
+    "n_items": 134,
+    "n_locs": 134,
     "n_probes": 28,
-    "placed": "f67a3c75525dd0fa",
+    "placed": "2936b6061606633b",
     "precollected": [
      "Halo (CE) Access"
     ],
     "probes": "ccca8bfd1dc7ec42",
     "rng_next": 0.7417869892607294,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 25,
      "kill_species_checks": 0,
+     "skullsanity": 1
+    },
+    "start": "Halo (CE)"
+   }
+  },
+  "kills_every_kill/1": {
+   "options": {
+    "kill_infection_interval": 1,
+    "kill_milestone_interval": 1,
+    "kill_milestone_max_percent": 80,
+    "kill_species_checks": true
+   },
+   "seed": 1,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "947f5baff3fba716",
+    "locs": "e62695a5771694cb",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 3645,
+    "n_locs": 3645,
+    "n_probes": 28,
+    "placed": "2fa062129f75f190",
+    "precollected": [
+     "The Pillar of Autumn Access"
+    ],
+    "probes": "921d2e390e56a992",
+    "rng_next": 0.8474337369372327,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 1,
+     "kill_milestone_interval": 1,
+     "kill_species_checks": 1,
+     "skullsanity": 1
+    },
+    "start": "The Pillar of Autumn"
+   }
+  },
+  "kills_every_kill/123456": {
+   "options": {
+    "kill_infection_interval": 1,
+    "kill_milestone_interval": 1,
+    "kill_milestone_max_percent": 80,
+    "kill_species_checks": true
+   },
+   "seed": 123456,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "a11813e4d6d9919f",
+    "locs": "e62695a5771694cb",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 3645,
+    "n_locs": 3645,
+    "n_probes": 28,
+    "placed": "5eb36586ef4e3c69",
+    "precollected": [
+     "Two Betrayals Access"
+    ],
+    "probes": "34e4d1cb83177291",
+    "rng_next": 0.7940590105180981,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 1,
+     "kill_milestone_interval": 1,
+     "kill_species_checks": 1,
+     "skullsanity": 1
+    },
+    "start": "Two Betrayals"
+   }
+  },
+  "kills_every_kill/2": {
+   "options": {
+    "kill_infection_interval": 1,
+    "kill_milestone_interval": 1,
+    "kill_milestone_max_percent": 80,
+    "kill_species_checks": true
+   },
+   "seed": 2,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "6b5ad3cbf07fa780",
+    "locs": "e62695a5771694cb",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 3645,
+    "n_locs": 3645,
+    "n_probes": 28,
+    "placed": "e7a6b671f6fec2a3",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "2daf1028b7a12bdc",
+    "rng_next": 0.9478274870593494,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 1,
+     "kill_milestone_interval": 1,
+     "kill_species_checks": 1,
+     "skullsanity": 1
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "kills_every_kill/3": {
+   "options": {
+    "kill_infection_interval": 1,
+    "kill_milestone_interval": 1,
+    "kill_milestone_max_percent": 80,
+    "kill_species_checks": true
+   },
+   "seed": 3,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "6b5ad3cbf07fa780",
+    "locs": "e62695a5771694cb",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 3645,
+    "n_locs": 3645,
+    "n_probes": 28,
+    "placed": "42a4372ab43ae128",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "2daf1028b7a12bdc",
+    "rng_next": 0.5442292252959519,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 1,
+     "kill_milestone_interval": 1,
+     "kill_species_checks": 1,
+     "skullsanity": 1
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "kills_every_kill/4": {
+   "options": {
+    "kill_infection_interval": 1,
+    "kill_milestone_interval": 1,
+    "kill_milestone_max_percent": 80,
+    "kill_species_checks": true
+   },
+   "seed": 4,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "b1017fd2d7a546ab",
+    "locs": "e62695a5771694cb",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 3645,
+    "n_locs": 3645,
+    "n_probes": 28,
+    "placed": "e44a27033ab2e411",
+    "precollected": [
+     "Keyes Access"
+    ],
+    "probes": "5524d0d9b93400d2",
+    "rng_next": 0.1031660342307158,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 1,
+     "kill_milestone_interval": 1,
+     "kill_species_checks": 1,
+     "skullsanity": 1
+    },
+    "start": "Keyes"
+   }
+  },
+  "kills_every_kill/5": {
+   "options": {
+    "kill_infection_interval": 1,
+    "kill_milestone_interval": 1,
+    "kill_milestone_max_percent": 80,
+    "kill_species_checks": true
+   },
+   "seed": 5,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "264be4c8eb016fe3",
+    "locs": "e62695a5771694cb",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 3645,
+    "n_locs": 3645,
+    "n_probes": 28,
+    "placed": "5265936e1c4feb95",
+    "precollected": [
+     "Halo (CE) Access"
+    ],
+    "probes": "ccca8bfd1dc7ec42",
+    "rng_next": 0.7417869892607294,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 1,
+     "kill_milestone_interval": 1,
+     "kill_species_checks": 1,
      "skullsanity": 1
     },
     "start": "Halo (CE)"
@@ -1187,8 +1511,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "7bc47177f2e7a3a7",
-    "locs": "04a07738e284e7a4",
+    "items": "2d1a93f2b19ad438",
+    "locs": "5d51168576c338ad",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1200,17 +1524,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 130,
-    "n_locs": 130,
+    "n_items": 137,
+    "n_locs": 137,
     "n_probes": 42,
-    "placed": "f6ddaf059e20b5a0",
+    "placed": "6a4850ef7ad4624d",
     "precollected": [
      "The Pillar of Autumn Access"
     ],
     "probes": "9e5b741c2feb634f",
     "rng_next": 0.8474337369372327,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 50,
      "kill_species_checks": 1,
      "skullsanity": 2
@@ -1229,8 +1557,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "041c16b9501ba67f",
-    "locs": "04a07738e284e7a4",
+    "items": "a48ed7e6b971c0fa",
+    "locs": "5d51168576c338ad",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1242,17 +1570,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 130,
-    "n_locs": 130,
+    "n_items": 137,
+    "n_locs": 137,
     "n_probes": 42,
-    "placed": "ad8cbbbed313f116",
+    "placed": "48d73495172c33db",
     "precollected": [
      "Two Betrayals Access"
     ],
     "probes": "36cc771f454f4b87",
     "rng_next": 0.7940590105180981,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 50,
      "kill_species_checks": 1,
      "skullsanity": 2
@@ -1271,8 +1603,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "6d99747e69b361a4",
-    "locs": "04a07738e284e7a4",
+    "items": "ecde13af8adf647a",
+    "locs": "5d51168576c338ad",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1284,17 +1616,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 130,
-    "n_locs": 130,
+    "n_items": 137,
+    "n_locs": 137,
     "n_probes": 42,
-    "placed": "4b160e503f66cfeb",
+    "placed": "bfa9486fb291e856",
     "precollected": [
      "343 Guilty Spark Access"
     ],
     "probes": "782162ba26e2585b",
     "rng_next": 0.9478274870593494,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 50,
      "kill_species_checks": 1,
      "skullsanity": 2
@@ -1313,8 +1649,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "6d99747e69b361a4",
-    "locs": "04a07738e284e7a4",
+    "items": "ecde13af8adf647a",
+    "locs": "5d51168576c338ad",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1326,17 +1662,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 130,
-    "n_locs": 130,
+    "n_items": 137,
+    "n_locs": 137,
     "n_probes": 42,
-    "placed": "8ce1dc63641deb2a",
+    "placed": "de6ee31fae5a7840",
     "precollected": [
      "343 Guilty Spark Access"
     ],
     "probes": "782162ba26e2585b",
     "rng_next": 0.5442292252959519,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 50,
      "kill_species_checks": 1,
      "skullsanity": 2
@@ -1355,8 +1695,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "f318f486dba424e6",
-    "locs": "04a07738e284e7a4",
+    "items": "5579df1e081f22d4",
+    "locs": "5d51168576c338ad",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1368,17 +1708,21 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 130,
-    "n_locs": 130,
+    "n_items": 137,
+    "n_locs": 137,
     "n_probes": 42,
-    "placed": "6f1b057de0c1cad3",
+    "placed": "fbe76017da3dd9fc",
     "precollected": [
      "Keyes Access"
     ],
     "probes": "8a45f5d269121476",
     "rng_next": 0.1031660342307158,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 50,
      "kill_species_checks": 1,
      "skullsanity": 2
@@ -1397,8 +1741,8 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "9a40278f41fb776c",
-    "locs": "04a07738e284e7a4",
+    "items": "99c30f98a3756433",
+    "locs": "5d51168576c338ad",
     "missions": [
      "The Pillar of Autumn",
      "Halo (CE)",
@@ -1410,20 +1754,300 @@
      "Two Betrayals",
      "Keyes"
     ],
-    "n_items": 130,
-    "n_locs": 130,
+    "n_items": 137,
+    "n_locs": 137,
     "n_probes": 42,
-    "placed": "1d23fda9e0aad9a3",
+    "placed": "756ddadf15ecd6cb",
     "precollected": [
      "Halo (CE) Access"
     ],
     "probes": "87f831c1f34bc5be",
     "rng_next": 0.7417869892607294,
     "slot": {
+     "ce_enabled": 1,
      "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 0,
      "kill_milestone_interval": 50,
      "kill_species_checks": 1,
      "skullsanity": 2
+    },
+    "start": "Halo (CE)"
+   }
+  },
+  "kills_prog20_heroic/1": {
+   "options": {
+    "kill_difficulty": "heroic",
+    "kill_infection_interval": 50,
+    "kill_milestone_interval": 10,
+    "kill_milestone_progression_percent": 20
+   },
+   "seed": 1,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "1dd96cf19d87fd99",
+    "locs": "3924d3f1e08a121b",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 288,
+    "n_locs": 288,
+    "n_probes": 28,
+    "placed": "3bb51f4dc7b6ea2d",
+    "precollected": [
+     "The Pillar of Autumn Access"
+    ],
+    "probes": "921d2e390e56a992",
+    "rng_next": 0.8474337369372327,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 50,
+     "kill_milestone_interval": 10,
+     "kill_species_checks": 0,
+     "skullsanity": 1
+    },
+    "start": "The Pillar of Autumn"
+   }
+  },
+  "kills_prog20_heroic/123456": {
+   "options": {
+    "kill_difficulty": "heroic",
+    "kill_infection_interval": 50,
+    "kill_milestone_interval": 10,
+    "kill_milestone_progression_percent": 20
+   },
+   "seed": 123456,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "da02dcea36341382",
+    "locs": "3924d3f1e08a121b",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 288,
+    "n_locs": 288,
+    "n_probes": 28,
+    "placed": "09803070dd7d00d7",
+    "precollected": [
+     "Two Betrayals Access"
+    ],
+    "probes": "34e4d1cb83177291",
+    "rng_next": 0.7940590105180981,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 50,
+     "kill_milestone_interval": 10,
+     "kill_species_checks": 0,
+     "skullsanity": 1
+    },
+    "start": "Two Betrayals"
+   }
+  },
+  "kills_prog20_heroic/2": {
+   "options": {
+    "kill_difficulty": "heroic",
+    "kill_infection_interval": 50,
+    "kill_milestone_interval": 10,
+    "kill_milestone_progression_percent": 20
+   },
+   "seed": 2,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "43a9bbf2f821f672",
+    "locs": "3924d3f1e08a121b",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 288,
+    "n_locs": 288,
+    "n_probes": 28,
+    "placed": "62e7d55400732936",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "2daf1028b7a12bdc",
+    "rng_next": 0.9478274870593494,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 50,
+     "kill_milestone_interval": 10,
+     "kill_species_checks": 0,
+     "skullsanity": 1
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "kills_prog20_heroic/3": {
+   "options": {
+    "kill_difficulty": "heroic",
+    "kill_infection_interval": 50,
+    "kill_milestone_interval": 10,
+    "kill_milestone_progression_percent": 20
+   },
+   "seed": 3,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "43a9bbf2f821f672",
+    "locs": "3924d3f1e08a121b",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 288,
+    "n_locs": 288,
+    "n_probes": 28,
+    "placed": "70d9eff883f3f5e4",
+    "precollected": [
+     "343 Guilty Spark Access"
+    ],
+    "probes": "2daf1028b7a12bdc",
+    "rng_next": 0.5442292252959519,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 50,
+     "kill_milestone_interval": 10,
+     "kill_species_checks": 0,
+     "skullsanity": 1
+    },
+    "start": "343 Guilty Spark"
+   }
+  },
+  "kills_prog20_heroic/4": {
+   "options": {
+    "kill_difficulty": "heroic",
+    "kill_infection_interval": 50,
+    "kill_milestone_interval": 10,
+    "kill_milestone_progression_percent": 20
+   },
+   "seed": 4,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "879e88394feb0665",
+    "locs": "3924d3f1e08a121b",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 288,
+    "n_locs": 288,
+    "n_probes": 28,
+    "placed": "c46806d2679419e6",
+    "precollected": [
+     "Keyes Access"
+    ],
+    "probes": "5524d0d9b93400d2",
+    "rng_next": 0.1031660342307158,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 50,
+     "kill_milestone_interval": 10,
+     "kill_species_checks": 0,
+     "skullsanity": 1
+    },
+    "start": "Keyes"
+   }
+  },
+  "kills_prog20_heroic/5": {
+   "options": {
+    "kill_difficulty": "heroic",
+    "kill_infection_interval": 50,
+    "kill_milestone_interval": 10,
+    "kill_milestone_progression_percent": 20
+   },
+   "seed": 5,
+   "snap": {
+    "beatable": true,
+    "final": "The Maw",
+    "items": "0423191eff0ea658",
+    "locs": "3924d3f1e08a121b",
+    "missions": [
+     "The Pillar of Autumn",
+     "Halo (CE)",
+     "The Truth and Reconciliation",
+     "The Silent Cartographer",
+     "Assault on the Control Room",
+     "343 Guilty Spark",
+     "The Library",
+     "Two Betrayals",
+     "Keyes"
+    ],
+    "n_items": 288,
+    "n_locs": 288,
+    "n_probes": 28,
+    "placed": "3cffea3b918b30ea",
+    "precollected": [
+     "Halo (CE) Access"
+    ],
+    "probes": "ccca8bfd1dc7ec42",
+    "rng_next": 0.7417869892607294,
+    "slot": {
+     "ce_enabled": 1,
+     "final_mission": "The Maw",
+     "h2_enabled": 0,
+     "h2_final_mission": "",
+     "kill_infection_interval": 50,
+     "kill_milestone_interval": 10,
+     "kill_species_checks": 0,
+     "skullsanity": 1
     },
     "start": "Halo (CE)"
    }
@@ -5956,5 +6580,5 @@
    "Two Betrayals Complete": 108000
   }
  },
- "source_commit": "702b51e"
+ "source_commit": "702b51e (CE-only baseline); kill cases re-captured 2026-11-24 for PLAN 6.R (see docs/stage-reports/phase6-release.md)"
 }

@@ -22,7 +22,11 @@ CASES = [
     ("final_keyes", {"ce_final_mission": "keyes"}),
     ("final_random", {"ce_final_mission": "random_choice", "skullsanity": "off"}),
     ("kills_25", {"kill_milestone_interval": 25, "kill_milestone_max_percent": 50}),
-    ("kills_25_max90", {"kill_milestone_interval": 25, "kill_milestone_max_percent": 90}),
+    ("kills_25_max80", {"kill_milestone_interval": 25, "kill_milestone_max_percent": 80}),  # was max 90 (PLAN 6.R: max is 80)
+    ("kills_every_kill", {"kill_milestone_interval": 1, "kill_milestone_max_percent": 80, "kill_species_checks": True,
+                          "kill_infection_interval": 1}),
+    ("kills_prog20_heroic", {"kill_milestone_interval": 10, "kill_milestone_progression_percent": 20,
+                             "kill_difficulty": "heroic", "kill_infection_interval": 50}),
     ("kills_legendary_species", {"kill_milestone_interval": 50, "kill_difficulty": "legendary",
                                  "kill_species_checks": True, "skullsanity": "all"}),
 ]
@@ -55,7 +59,7 @@ def _probes(mw):
     pool_by_name = {}
     for i in pool:
         pool_by_name.setdefault(i.name, i)
-    locs = [l for l in mw.get_locations(1) if " Kill" not in l.name]
+    locs = [l for l in mw.get_locations(1) if " Kill" not in l.name and " Infection Form" not in l.name]
     regions = [r for r in mw.get_regions(1)]
 
     def reach(items):

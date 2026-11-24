@@ -26,6 +26,11 @@ namespace haloap {
         // counts iff its variant is in this list; the squad/encounter at death time is irrelevant (script migration
         // puts actors into empty destination squads, some have enc/sq = -1).
         std::vector<int> hostileVariants;
+        // PLAN 6.R (from data/h1/kill_basis.json): measured counted kills in one complete Normal run (informational here;
+        // the apworld caps milestones with it) and the measured per-run infection-form (Flood swarm) deaths. swarmMax 0 =
+        // no swarm data for the mission: its swarm deaths are not counted and no infection check exists there.
+        int killBasis{ 0 };
+        int swarmMax{ 0 };
     };
     using KillTables = std::map<std::string, MissionKillTable>;
 
@@ -37,6 +42,12 @@ namespace haloap {
     constexpr int kMaxMilestoneCount = 9999;
     constexpr int64_t MilestoneId(int missionNo, int count) {
         return kKillBase + kGameCe * 10000000LL + static_cast<int64_t>(100 + missionNo) * 10000LL + count;
+    }
+
+    // Infection-form check ID for "infection form kill count `count` in mission `missionNo`" (ADR-001 Amendment B):
+    // its own block (200 + mission_no) so it can never meet a species (mission_no) or milestone (100 + mission_no) block.
+    constexpr int64_t InfectionId(int missionNo, int count) {
+        return kKillBase + kGameCe * 10000000LL + static_cast<int64_t>(200 + missionNo) * 10000LL + count;
     }
 
     // Not thread-safe; the caller serializes access.
@@ -58,11 +69,12 @@ namespace haloap {
         // Slot settings: milestone every `interval` counted kills (0 = none; clamped to 0..100) and whether the
         // species checks are on. Defaults (0, false) emit nothing. Returns every ID earned so far under the new
         // settings (the emitted-set restarts, so a changed seed gets a full re-evaluation).
-        std::vector<int64_t> SetConfig(int interval, bool species);
+        // `infection` = an infection-form check every N swarm deaths (0 = none; clamped to 0..100).
+        std::vector<int64_t> SetConfig(int interval, bool species, int infection = 0);
 
         // Forgets the per-mission peaks and species seen in earlier runs (a different seed connected). The current
         // run's count is kept: those kills happen in the new seed's session from here on.
-        void ResetHistory() { m_peak.clear(); m_speciesSeen.clear(); m_emitted.clear(); }
+        void ResetHistory() { m_peak.clear(); m_swarmPeak.clear(); m_speciesSeen.clear(); m_emitted.clear(); }
 
         // Starts a new run of `code`. Empty or unknown code: nothing is tracked until the next valid load.
         void OnMissionLoad(const std::string& code);
@@ -70,16 +82,25 @@ namespace haloap {
         // Newly earned location IDs for this event (usually empty).
         std::vector<int64_t> OnEvent(const AiEvent& ev);
 
+        // A Flood infection form died (SWARM message, PLAN 5.7). Counted per run by unique unit handle, scripted
+        // unit_kill (ekf & 0x20) excluded, only in missions whose table has swarmMax > 0. Newly earned infection IDs.
+        std::vector<int64_t> OnSwarm(const SwarmEvent& ev);
+
+        int SwarmCount() const { return static_cast<int>(m_seenSwarm.size()); }
+
         int Count() const { return static_cast<int>(m_seen.size()); }
 
     private:
         KillTables m_tables;
         const MissionKillTable* m_cur{ nullptr };
         std::set<uint32_t> m_seen;                 // actor handles counted this run
+        std::set<uint32_t> m_seenSwarm;            // infection-form unit handles counted this run
+        std::map<int, int> m_swarmPeak;            // mission_no -> highest infection count reached in any run
         std::map<int, int> m_peak;                 // mission_no -> highest count reached in any run
         std::set<int64_t> m_speciesSeen;           // species location IDs whose first kill happened (any run)
         std::set<int64_t> m_emitted;               // IDs returned since the last SetConfig
         int m_interval{ 0 };
+        int m_infection{ 0 };
         bool m_species{ false };
     };
 

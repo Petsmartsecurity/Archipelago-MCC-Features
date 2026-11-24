@@ -27,7 +27,8 @@ static KillTables Small() {
     t["m1"] = { 1, { {1, 0}, {1, 1}, {2, 0} },
                 { {"grunt", 201}, {"elite", 202} },
                 { {10, "grunt"}, {11, "elite"}, {12, "warthog"}, {50, "marine"}, {60, "flood_infection"} },
-                { 10, 11, 12, 99 } };  // hostile countable variants; 50 = marine (friendly), 60 = flood_infection (uncountable)
+                { 10, 11, 12, 99 },  // hostile countable variants; 50 = marine (friendly), 60 = flood_infection (uncountable)
+                100, 50 };  // killBasis, swarmMax (m1 has infection-form data, m2 has none)
     t["m2"] = { 2, { {1, 0} }, { {"grunt", 302} }, { {10, "grunt"} }, { 10, 99 } };
     return t;
 }
@@ -45,6 +46,66 @@ static void TestIdFormula() {
     CHECK(MilestoneId(1, 25) == 1000000000LL + 10000000LL + 101LL * 10000 + 25);
     CHECK(MilestoneId(10, 9999) == 1000000000LL + 10000000LL + 110LL * 10000 + 9999);
     CHECK(MilestoneId(10, 9999) < 2147483647LL);
+}
+
+static SwarmEvent Sw(uint32_t unit, uint32_t ekf = 0) {
+    SwarmEvent e{};
+    e.ah = 1; e.unit = unit; e.var = 0xE0000000u | 60; e.ekf = ekf; e.tid = 1; e.enc = 1; e.sq = 0; e.members = 3;
+    return e;
+}
+
+static Ids FeedSwarm(KillTracker& k, uint32_t firstUnit, int n) {
+    Ids all;
+    for (int i = 0; i < n; ++i) {
+        for (int64_t id : k.OnSwarm(Sw(firstUnit + i))) all.push_back(id);
+    }
+    return all;
+}
+
+static void TestInfectionFormula() {
+    CHECK(InfectionId(1, 25) == 1000000000LL + 10000000LL + 201LL * 10000 + 25);
+    CHECK(InfectionId(10, 9999) == 1000000000LL + 10000000LL + 210LL * 10000 + 9999);
+    CHECK(InfectionId(10, 9999) < 2147483647LL);
+    CHECK(InfectionId(1, 1) != MilestoneId(1, 1) && InfectionId(1, 1) != MilestoneId(10, 1));
+}
+
+static void TestInfectionChecks() {
+    KillTracker k(Small());
+    k.SetConfig(0, false, 10);
+    k.OnMissionLoad("m1");
+    CHECK((FeedSwarm(k, 1, 25) == Ids{ InfectionId(1, 10), InfectionId(1, 20) }));
+    CHECK(k.SwarmCount() == 25);
+    CHECK(FeedSwarm(k, 1, 5).empty());                     // same unit handles: no recount
+    CHECK(k.OnSwarm(Sw(500, 0x20)).empty());               // scripted unit_kill: not counted
+    CHECK(k.SwarmCount() == 25);
+    CHECK((FeedSwarm(k, 100, 5) == Ids{ InfectionId(1, 30) }));
+    // infection forms never touch the kill count or milestones
+    CHECK(k.Count() == 0);
+    // a mission without swarm data counts nothing
+    k.OnMissionLoad("m2");
+    CHECK(FeedSwarm(k, 1, 40).empty());
+    CHECK(k.SwarmCount() == 0);
+    // a new run of m1 restarts the infection count
+    k.OnMissionLoad("m1");
+    CHECK(k.SwarmCount() == 0);
+    CHECK((FeedSwarm(k, 1, 10) == Ids{ InfectionId(1, 10) }) == false);  // already emitted under this config (de-duplicated)
+    // off by default and when 0
+    KillTracker z(Small());
+    z.OnMissionLoad("m1");
+    CHECK(FeedSwarm(z, 1, 50).empty());
+    z.SetConfig(25, true, 0);
+    CHECK(FeedSwarm(z, 100, 50).empty());
+}
+
+static void TestInfectionSetConfigAfterKills() {
+    KillTracker k(Small());
+    k.OnMissionLoad("m1");
+    FeedSwarm(k, 1, 30);                                   // before the slot connected
+    CHECK((k.SetConfig(0, false, 10) == Ids{ InfectionId(1, 10), InfectionId(1, 20), InfectionId(1, 30) }));
+    CHECK(k.SetConfig(0, false, 0).empty());
+    k.ResetHistory();
+    CHECK(k.SetConfig(0, false, 10).empty());
+    CHECK(Feed(k, 1, 5).size() == 0);                      // milestones off: infection config does not leak
 }
 
 static void TestIntervalMilestones() {
@@ -246,6 +307,9 @@ static void TestRealA10Table() {
 
 int main() {
     TestIdFormula();
+    TestInfectionFormula();
+    TestInfectionChecks();
+    TestInfectionSetConfigAfterKills();
     TestIntervalMilestones();
     TestIntervalOneAndNone();
     TestSpeciesToggle();

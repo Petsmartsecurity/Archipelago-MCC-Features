@@ -1,0 +1,13 @@
+<Project>
+  <!-- PLAN 6.R: neutral release builds. `msbuild /p:HaloApNeutral=true` keeps the builder's user name and folders out of the
+       binaries: the PDB path (/PDBALTPATH:%_PDB% leaves just the file name) and source paths in __FILE__ strings
+       (/d1trimfile strips the solution folder). Normal builds are untouched. tools/package-release.ps1 scans the result. -->
+  <ItemDefinitionGroup Condition="'$(HaloApNeutral)'=='true'">
+    <ClCompile>
+      <AdditionalOptions>/d1trimfile:$(MSBuildThisFileDirectory) %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>
