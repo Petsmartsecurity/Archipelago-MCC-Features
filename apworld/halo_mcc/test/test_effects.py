@@ -53,8 +53,10 @@ class TestEffectPool(unittest.TestCase):
         for seed in range(1, 6):
             _, items = pool({"effect_items": True, "kill_milestone_interval": 10}, seed=seed)
             seen |= {i.name for i in items}
-        self.assertNotIn("Effect: Recharged Shields", seen)
-        self.assertEqual(seen & {n for n, _ in FROZEN.values()}, {n for i, (n, _) in FROZEN.items() if i != 81002})
+        retired = {81002, 81104, 81105}  # 81104 / 81105 dropped by the user (QUESTIONS #15, 2026-11-24)
+        for i in retired:
+            self.assertNotIn(FROZEN[i][0], seen)
+        self.assertEqual(seen & {n for n, _ in FROZEN.values()}, {n for i, (n, _) in FROZEN.items() if i not in retired})
 
     def test_on_replaces_only_filler(self):
         _, off = pool({})

@@ -512,7 +512,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "3903f5d536aedcef",
+    "items": "696bf9329e67c674",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -527,12 +527,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 34,
-    "placed": "c80b19ab30c8bb6d",
+    "n_probes": 32,
+    "placed": "d32644ad03d71463",
     "precollected": [
      "The Pillar of Autumn Access"
     ],
-    "probes": "91eb224aeb1f56c9",
+    "probes": "c65c86eaa2dfc7d8",
     "rng_next": 0.8474337369372327,
     "slot": {
      "ce_enabled": 1,
@@ -557,7 +557,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "3f9df2a30b8a181d",
+    "items": "e9c44b22fa2f7a54",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -572,12 +572,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 34,
-    "placed": "9c4bd0e107c203a9",
+    "n_probes": 32,
+    "placed": "91b2c18a275bc459",
     "precollected": [
      "Two Betrayals Access"
     ],
-    "probes": "16424ff9d7d2cb82",
+    "probes": "762c3d78b1bd7650",
     "rng_next": 0.7940590105180981,
     "slot": {
      "ce_enabled": 1,
@@ -602,7 +602,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "a3b501a41a5a20e4",
+    "items": "1cf88a8367f0f94c",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -617,12 +617,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 34,
-    "placed": "f03b3266b681c32a",
+    "n_probes": 32,
+    "placed": "7cb4be47f123f915",
     "precollected": [
      "343 Guilty Spark Access"
     ],
-    "probes": "8b1b39e4abbf6527",
+    "probes": "7c1458ce59c2e517",
     "rng_next": 0.9478274870593494,
     "slot": {
      "ce_enabled": 1,
@@ -647,7 +647,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "0a865c190510e015",
+    "items": "94f44492f2fb6f71",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -662,12 +662,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 33,
-    "placed": "8d2c88256f83eb4c",
+    "n_probes": 32,
+    "placed": "68d5bb084c78906a",
     "precollected": [
      "343 Guilty Spark Access"
     ],
-    "probes": "a1362aadb36ad406",
+    "probes": "7c1458ce59c2e517",
     "rng_next": 0.5442292252959519,
     "slot": {
      "ce_enabled": 1,
@@ -692,7 +692,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "14e9707f035a38ca",
+    "items": "6989a5ece6b578c0",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -707,12 +707,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 33,
-    "placed": "cc0cffe915aa57a9",
+    "n_probes": 32,
+    "placed": "3eb84411cddf6071",
     "precollected": [
      "Keyes Access"
     ],
-    "probes": "34c253e74f3c7a2b",
+    "probes": "81189f24469435d0",
     "rng_next": 0.1031660342307158,
     "slot": {
      "ce_enabled": 1,
@@ -737,7 +737,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "dabe51d8b0182488",
+    "items": "e879eaaa3a92362e",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -752,12 +752,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 33,
-    "placed": "02e68bf7e8836453",
+    "n_probes": 32,
+    "placed": "820a299c11abefec",
     "precollected": [
      "Halo (CE) Access"
     ],
-    "probes": "cbc2f246e5597696",
+    "probes": "8262845c274e2862",
     "rng_next": 0.7417869892607294,
     "slot": {
      "ce_enabled": 1,
@@ -784,7 +784,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "3eecd10b89eb0a14",
+    "items": "2e7bf51f32c05140",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -799,12 +799,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 44,
-    "placed": "e0a6296d1a66dd65",
+    "n_probes": 42,
+    "placed": "03473048b33c2f32",
     "precollected": [
      "The Pillar of Autumn Access"
     ],
-    "probes": "d1c8c8bfa9af27b6",
+    "probes": "cb546ed7e02a693f",
     "rng_next": 0.8474337369372327,
     "slot": {
      "ce_enabled": 1,
@@ -831,7 +831,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "3ae4371d7e04d9fd",
+    "items": "31e31acee21cb71a",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -846,12 +846,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 44,
-    "placed": "f1f9611cc1151dfa",
+    "n_probes": 42,
+    "placed": "55ff321bd9a3c779",
     "precollected": [
      "Two Betrayals Access"
     ],
-    "probes": "98dc349f5dd51fd4",
+    "probes": "6fe0a5142887595f",
     "rng_next": 0.7940590105180981,
     "slot": {
      "ce_enabled": 1,
@@ -878,7 +878,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "6a346150a47a095f",
+    "items": "1c733336964e6a25",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -893,12 +893,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 44,
-    "placed": "500d4cba2671175e",
+    "n_probes": 42,
+    "placed": "b6f04c8650b3570f",
     "precollected": [
      "343 Guilty Spark Access"
     ],
-    "probes": "6bfce97ebd8635ed",
+    "probes": "5be4d90493d6b2c0",
     "rng_next": 0.9478274870593494,
     "slot": {
      "ce_enabled": 1,
@@ -925,7 +925,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "61526beb37c8c713",
+    "items": "1c733336964e6a25",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -940,12 +940,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 44,
-    "placed": "8d31b32b32492443",
+    "n_probes": 42,
+    "placed": "eaba4ae7e72e1a05",
     "precollected": [
      "343 Guilty Spark Access"
     ],
-    "probes": "6bfce97ebd8635ed",
+    "probes": "5be4d90493d6b2c0",
     "rng_next": 0.5442292252959519,
     "slot": {
      "ce_enabled": 1,
@@ -972,7 +972,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "3894ca2c8f02deb4",
+    "items": "7ee6f96879375692",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -987,12 +987,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 44,
-    "placed": "b6946cafd4227609",
+    "n_probes": 42,
+    "placed": "46aeb7ff3cc18b49",
     "precollected": [
      "Keyes Access"
     ],
-    "probes": "8476de08c8785769",
+    "probes": "1b701e9cbb9833e0",
     "rng_next": 0.1031660342307158,
     "slot": {
      "ce_enabled": 1,
@@ -1019,7 +1019,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "f3820bd09e9d841f",
+    "items": "19002d46963c038a",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -1034,12 +1034,12 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 44,
-    "placed": "778008dd8b4996b7",
+    "n_probes": 42,
+    "placed": "9475a7d903e04d79",
     "precollected": [
      "Halo (CE) Access"
     ],
-    "probes": "09f0db5d81e54c77",
+    "probes": "e5dda25e7d456870",
     "rng_next": 0.7417869892607294,
     "slot": {
      "ce_enabled": 1,

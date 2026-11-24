@@ -16,8 +16,12 @@ CE_SKULL_DISABLERS: list[str] = [*GAME_SKULLS["ce"], *NON_SCORING_SKULLS["ce"]]
 # the two). Weight = relative chance among the good items (or among the traps) when filler is replaced.
 # Retired before release use (ADR-005 After QA M2): keeps its id and name in the data package (append-only) but is never generated
 # and the DLL has no command for it. `object_set_shield` writes frac * max shield into a 0..1 fraction, so no value is safely "full".
+# Heavy Gravity and Slow Motion: dropped by the user (QUESTIONS #15, 2026-11-24). Retired the same way; the DLL keeps their rows so
+# a seed generated before this change still applies them.
 CE_EFFECT_RETIRED: dict[str, tuple[int, ItemClassification]] = {
     "Effect: Recharged Shields": (81002, ItemClassification.filler),
+    "Trap: Heavy Gravity (20 s)": (81104, ItemClassification.trap),
+    "Trap: Slow Motion (15 s)": (81105, ItemClassification.trap),
 }
 CE_EFFECT_ITEMS: list[tuple[str, int, ItemClassification, int]] = [
     ("Effect: Medkit", 81001, ItemClassification.filler, 3),
@@ -25,8 +29,6 @@ CE_EFFECT_ITEMS: list[tuple[str, int, ItemClassification, int]] = [
     ("Effect: Infinite Ammo (30 s)", 81012, ItemClassification.filler, 2),
     ("Effect: Moon Gravity (30 s)", 81013, ItemClassification.filler, 2),
     ("Trap: Shields Down", 81101, ItemClassification.trap, 3),
-    ("Trap: Heavy Gravity (20 s)", 81104, ItemClassification.trap, 2),
-    ("Trap: Slow Motion (15 s)", 81105, ItemClassification.trap, 2),
 ]
 EFFECT_BY_NAME = {**CE_EFFECT_RETIRED, **{name: (item_id, cls) for name, item_id, cls, _ in CE_EFFECT_ITEMS}}
 
