@@ -9,6 +9,7 @@ from Options import OptionError
 from .bases import MCCTestBase
 from .ce_snapshot import build
 from ..data.halo2_location_data import H2_CHAPTERS, H2_MISSIONS
+from ..data.halo2_skull_data import H2_SKULLS
 from ..data.levels import LEVEL_DATA
 from ..mcc_options import H2FinalMission
 
@@ -49,7 +50,9 @@ class TestH2Only(Common, MCCTestBase):
 
     def test_only_h2_content(self):
         locs = self.locs()
-        want = {f"{m} Complete" for m in H2_NAMES if m != self.world.h2_final_mission} | set(H2_CHAPTERS)
+        # the 8 non-Legendary hidden skulls are checks (h2_legendary_skulls is off by default)
+        want = ({f"{m} Complete" for m in H2_NAMES if m != self.world.h2_final_mission} | set(H2_CHAPTERS)
+                | {n for n, v in H2_SKULLS.items() if not v[2]})
         self.assertEqual(set(locs), want)
         self.assertEqual({r.name for r in self.multiworld.get_regions(self.player)}, {"Menu", *H2_NAMES})
         self.assertFalse([n for n in self.pool() if "Skull" in n])
@@ -196,7 +199,8 @@ class TestCEOffOptions(unittest.TestCase):
         names = {l.name for l in mw.get_locations(1)} | {i.name for i in mw.itempool} | {r.name for r in mw.get_regions(1)}
         for m in CE_NAMES:
             self.assertFalse([n for n in names if n.startswith(m)], m)
-        self.assertFalse([n for n in names if "Skull" in n or "Kill" in n])
+        # CE skulls/kills are gone; the Halo 2 hidden-skull checks ("<Mission> - <Skull> Skull") are not CE's
+        self.assertFalse([n for n in names if ("Skull" in n and n not in H2_SKULLS) or "Kill" in n])
 
     def test_ce_only_is_default(self):
         mw = gen({}, 3)

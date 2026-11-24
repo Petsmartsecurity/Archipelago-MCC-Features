@@ -1,6 +1,7 @@
 from .data.levels import LEVEL_DATA
 from rule_builder.rules import *
 from .data.skulls import GAME_SKULLS
+from .items import H2_SKULL_SCORING
 from .mcc_options import SkullSanity
 
 missions = [
@@ -43,3 +44,11 @@ def set_rules(world):
                 rule = HasFromListUnique(*world.ceskulls, count = world.options.skulls_required.value)
                 location = world.get_location(f"{level} Complete")
                 world.set_rule(location, rule)
+
+    # Halo 2 skull logic (QUESTIONS #16 Q3, mirrors CE): with h2_skullsanity all, a Halo 2 mission's completion needs
+    # h2_skulls_required of the scoring skull items
+    if world.options.h2_enabled and world.options.h2_skullsanity.value == SkullSanity.option_all:
+        for level, data in LEVEL_DATA.items():
+            if data.game == "H2" and level != world.h2_final_mission:
+                world.set_rule(world.get_location(f"{level} Complete"),
+                               HasFromListUnique(*H2_SKULL_SCORING, count=world.options.h2_skulls_required.value))

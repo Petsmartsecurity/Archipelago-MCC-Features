@@ -189,6 +189,50 @@ class H2FinalMission(Choice):
     option_random_choice = 16
 
 
+class H2SkullSanity(Choice):
+    """
+    EXPERIMENTAL (see h2_enabled). Halo 2 skull items, mirroring skullsanity (Halo CE). Halo 2 skulls are separate items
+    ("<Skull> Skull (Halo 2)"): receiving one lifts the lock on that skull in Halo 2.
+
+    off:         No Halo 2 skull items or logic.
+    non_scoring: non scoring skulls are locked off, receiving the item for them lets you turn them on.
+    all:         All skulls are locked, scoring skulls are locked on and non scoring skulls are locked off. receiving the item for them lets you toggle them.
+    inverted:    all skulls are locked off, receiving the item for them lets you turn them on.
+
+    The game side does not force or lock Halo 2 skulls yet (observe-only build); this only shapes the item pool and logic.
+    """
+    display_name = "Halo 2 Skull Sanity"
+    visibility = _H2_VISIBILITY
+    option_off = 0
+    option_non_scoring = 1
+    option_all = 2
+    option_inverted = 3
+    default = 0
+
+
+class H2LegendarySkulls(Toggle):
+    """
+    EXPERIMENTAL (see h2_enabled). Seven of the 15 hidden Halo 2 skulls only appear on Legendary (That's Just... Wrong,
+    Thunderstorm, IWHBYD, Catch, Ghost, Iron, Black Eye). Off: their checks do not exist, so a seed never needs Legendary.
+    On: they are checks like the other eight; only turn it on if you play those missions on Legendary.
+    """
+    display_name = "Halo 2 Legendary-only Skull Checks"
+    visibility = _H2_VISIBILITY
+    default = False
+
+
+class H2SkullsRequired(Range):
+    """
+    EXPERIMENTAL (see h2_enabled). With h2_skullsanity all: how many scoring Halo 2 skull items are needed before a Halo 2
+    mission's completion is in logic (like skulls_required for Halo CE).
+    """
+    display_name = "Required Halo 2 Skull Items"
+    visibility = _H2_VISIBILITY
+    range_start = 0
+    range_end = 17
+    default = 8
+
+
 class EffectItems(Toggle):
     """
     EXPERIMENTAL. Replaces the plain "filler" items with effect items that act on the running game when received:
@@ -251,6 +295,9 @@ class MCCOptions(PerGameCommonOptions):
     ce_final_mission: CeFinalMission
     h2_enabled: H2Enabled
     h2_final_mission: H2FinalMission
+    h2_skullsanity: H2SkullSanity
+    h2_legendary_skulls: H2LegendarySkulls
+    h2_skulls_required: H2SkullsRequired
     goal_mode: GoalMode
     effect_items: EffectItems
     trap_percentage: TrapPercentage

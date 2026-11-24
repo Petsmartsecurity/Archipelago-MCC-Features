@@ -2,6 +2,7 @@ from BaseClasses import ItemClassification, Location, LocationProgressType
 
 from .data.halo_ce_location_data import CE_LOCATION_DATA
 from .data.halo2_location_data import H2_CHAPTERS
+from .data.halo2_skull_data import H2_SKULLS
 from .data.halo_ce_kill_data import CE_KILL_DATA, CE_KILL_COUNTS, CE_KILL_BASIS
 from .data.kill_ids import (basis_for, datapackage_milestone_max_k, infection_id, infection_ks, infection_name,
                             milestone_cap, milestone_id, PROGRESSION_SAFE_CAP, milestone_ks, milestone_name, MAX_PERCENT)
@@ -18,6 +19,7 @@ def get_location_name_to_id():
         **{f"{data.level} - {name}": data.id for name, data in CE_LOCATION_DATA.items() if data.type == "Chapter"},
         **{f"{data.level} - {name}": data.id for name, data in CE_LOCATION_DATA.items() if data.type == "Skull"},
         **{name: loc_id for name, (_, loc_id) in H2_CHAPTERS.items()},
+        **{name: loc_id for name, (_, loc_id, _l) in H2_SKULLS.items()},
         # always present: the data package must not depend on options
         # species checks, and every milestone k = 1..max for every mission (the largest any option combination can ask for)
         **{name: kill_id for name, (_, _, kill_id) in CE_KILL_DATA.items()},
@@ -48,6 +50,12 @@ def create_locations(world):
     if gameSettings["H2"]:
         # the final mission has chapters too, like CE
         for name, (level, loc_id) in H2_CHAPTERS.items():
+            region = world.get_region(level)
+            region.locations.append(MCCLocation(world.player, name, loc_id, region))
+        # hidden skulls (QUESTIONS #16): the 7 Legendary-only ones exist only with h2_legendary_skulls (no RNG here)
+        for name, (level, loc_id, legendary_only) in H2_SKULLS.items():
+            if legendary_only and not world.options.h2_legendary_skulls:
+                continue
             region = world.get_region(level)
             region.locations.append(MCCLocation(world.player, name, loc_id, region))
 

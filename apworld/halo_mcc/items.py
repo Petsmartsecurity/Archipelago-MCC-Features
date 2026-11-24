@@ -2,11 +2,17 @@ from BaseClasses import Item, ItemClassification
 from .data.constants import *
 from .data.levels import LEVEL_DATA, LevelData
 from .data.skulls import GAME_SKULLS, NON_SCORING, NON_SCORING_SKULLS
+from .data.halo2_skull_data import H2_SKULL_ITEMS, H2_SKULL_NAMES
 from .mcc_options import SkullSanity
 
 # Ordered list of CE skull disabler items (non-PERM_DISABLED CE skulls, alphabetical)
 CE_SKULL_DISABLERS: list[str] = [*GAME_SKULLS["ce"], *NON_SCORING_SKULLS["ce"]]
 
+
+# Halo 2 skull items (QUESTIONS #16): one per engine skull, id 92000 + MCC bit, "<Skull> Skull (Halo 2)". Same tiers as CE:
+# scoring skulls (not in NON_SCORING) come with "all"/"inverted", 1.00x skulls with every tier above off.
+H2_SKULL_SCORING: list[str] = [f"{n} Skull (Halo 2)" for n in H2_SKULL_NAMES if n not in NON_SCORING]
+H2_SKULL_NONSCORING: list[str] = [f"{n} Skull (Halo 2)" for n in H2_SKULL_NAMES if n in NON_SCORING]
 
 # Classification: good effects are `filler`, not `useful`: kill locations above kill_milestone_progression_percent are EXCLUDED and
 # only accept filler/trap, so a pool of `useful` effects made generation fail ("Not enough filler items for excluded locations").
@@ -50,6 +56,7 @@ def get_item_name_to_id():
         **{f"{level} Access": data.offset for level, data in LEVEL_DATA.items()},
         **{f"{skull} Skull": SKULL_OFFSET + i + 1 for i, skull in enumerate(CE_SKULL_DISABLERS)},
         **{name: item_id for name, (item_id, _) in EFFECT_BY_NAME.items()},
+        **{name: item_id for name, (item_id, _b, _n) in H2_SKULL_ITEMS.items()},
     }
     return item_table
 
@@ -99,6 +106,14 @@ def create_items(world):
         for skull in NON_SCORING_SKULLS["ce"]:
             itempool.append(create_item_with_data(world, f"{skull} Skull"))
 
+    # Halo 2 skull items (separate from CE's, QUESTIONS #16)
+    if world.options.h2_enabled and world.options.h2_skullsanity >= 2:
+        for name in H2_SKULL_SCORING:
+            itempool.append(create_item_with_data(world, name))
+    if world.options.h2_enabled and world.options.h2_skullsanity >= 1:
+        for name in H2_SKULL_NONSCORING:
+            itempool.append(create_item_with_data(world, name))
+
     itempool.extend(create_filler(world, len(itempool)))
 
     world.multiworld.itempool += itempool
@@ -109,6 +124,10 @@ def create_item_with_data(world, name):
     if name in EFFECT_BY_NAME:
         item_id, classification = EFFECT_BY_NAME[name]
         return MCCItem(name, classification, item_id, world.player)
+    if name in H2_SKULL_ITEMS:
+        item_id = H2_SKULL_ITEMS[name][0]
+        scoring = name in H2_SKULL_SCORING
+        return MCCItem(name, ItemClassification.progression if scoring else ItemClassification.useful, item_id, world.player)
     if "Access" in name:
         classification = ItemClassification.progression
         real_name = name.replace(" Access", "")

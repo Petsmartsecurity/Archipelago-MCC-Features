@@ -393,6 +393,7 @@ static void TestTelemetry() {
         log.MissionLoad("a30");
         log.H2("mission_load code=03a\t\"x\"\x01 \xc3\xa9 bad=\xff.");
         log.H2(std::string(5000, 'z'));
+        log.H2("ev=skull n=4 tid=5 tick=900 path=notify_event n=5 plr=0 src=73de5e code=03a_oldmombasa diff=3");  // 8.H2.9b skull line
         std::string got = NormT(ReadAll(log.Path()));
         std::string want =
             "{\"ev\":\"session\",\"t\":N,\"gen\":0,\"build\":\"build1\",\"launcher\":\"0.1\"}\n"
@@ -413,7 +414,9 @@ static void TestTelemetry() {
             "{\"ev\":\"mission_end\",\"t\":N,\"gen\":1,\"mission\":\"a10\",\"reason\":\"won\",\"rejected\":2}\n"
             "{\"ev\":\"mission_load\",\"t\":N,\"gen\":2,\"mission\":\"a30\"}\n"
             "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"mission_load code=03a\\t\\\"x\\\"\\u0001 \xc3\xa9 bad=\xef\xbf\xbd.\"}\n"
-            "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"" + std::string(2048, 'z') + "\"}\n";
+            "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"" + std::string(2048, 'z') + "\"}\n"
+            "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"ev=skull n=4 tid=5 tick=900 path=notify_event n=5 plr=0 src=73de5e "
+            "code=03a_oldmombasa diff=3\"}\n";
         CHECK(got == want);
         if (got != want) std::printf("got:\n%s\n", got.c_str());
     }

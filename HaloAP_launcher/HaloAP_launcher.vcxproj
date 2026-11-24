@@ -51,6 +51,7 @@
     <ClInclude Include="effect_cursor.h" />
     <ClInclude Include="game_progress.h" />
     <ClInclude Include="Data\h2_map.h" />
+    <ClInclude Include="Data\h2_skull_map.h" />
     <ClInclude Include="pending_checks.h" />
     <ClInclude Include="telemetry_log.h" />
     <ClInclude Include="pipe_protocol.h" />

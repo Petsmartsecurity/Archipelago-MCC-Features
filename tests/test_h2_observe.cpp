@@ -234,7 +234,30 @@ static void TestDatum() {
     CHECK(h2::DatumElement(b.mem.data(), 0x00070001, 0x8A0) == nullptr);   // max count 0
 }
 
+static void TestSkulls() {
+    CHECK(h2::ClassifyClaim(0x600, 0x600) == h2::ClaimPath::Script);   // returns into skull_claim
+    CHECK(h2::ClassifyClaim(0x73de5e, 0x600) == h2::ClaimPath::Event); // the IWHBYD event handler
+    CHECK(h2::ClassifyClaim(0x600, 0) == h2::ClaimPath::Unknown);      // unverified link: never claim a path
+    CHECK(h2::ClassifyClaim(0, 0) == h2::ClaimPath::Unknown);
+    CHECK(std::strcmp(h2::ClaimPathName(h2::ClaimPath::Event), "notify_event") == 0);
+    CHECK(std::strcmp(h2::ClaimPathName(h2::ClaimPath::Script), "notify_script") == 0);
+
+    uint8_t arr[35] = {};
+    CHECK(h2::ActiveMask(arr, 35) == 0);
+    arr[0] = 1; arr[5] = 0xFF; arr[34] = 1;
+    CHECK(h2::ActiveMask(arr, 35) == ((1ULL << 0) | (1ULL << 5) | (1ULL << 34)));
+    CHECK(h2::ActiveMask(arr, 5) == 1ULL);                      // count bounds the read
+    uint8_t big[70];
+    std::memset(big, 1, sizeof(big));
+    CHECK(h2::ActiveMask(big, 70) == ~0ULL);                    // never past bit 63
+
+    h2::Msg m("skull", 3, 77);
+    m.Add("path=%s n=%d plr=%d", h2::ClaimPathName(h2::ClaimPath::Event), 5, 0);
+    CHECK(std::strcmp(m.Finish(), "H2: ev=skull n=3 tid=77 path=notify_event n=5 plr=0") == 0);
+}
+
 int main() {
+    TestSkulls();
     TestPatternCount();
     TestMsg();
     TestSanitize();

@@ -121,6 +121,25 @@ namespace h2 {
         return k == DeathKind::Kill ? "kill" : k == DeathKind::Erase ? "erase" : "unknown";
     }
 
+    // Skulls (PLAN 8.H2.9b). claim_notify is reached from skull_claim (script path: ret == claimRet) and from the IWHBYD event
+    // handler (QA 8.H2.9 M1: any other caller). claimRet == 0 means the skull_claim -> claim_notify link is unverified.
+    enum class ClaimPath { Script, Event, Unknown };
+    inline ClaimPath ClassifyClaim(uintptr_t ret, uintptr_t claimRet) {
+        if (!claimRet) return ClaimPath::Unknown;
+        return ret == claimRet ? ClaimPath::Script : ClaimPath::Event;
+    }
+    inline const char* ClaimPathName(ClaimPath p) {
+        return p == ClaimPath::Script ? "notify_script" : p == ClaimPath::Event ? "notify_event" : "notify_unknown";
+    }
+
+    // Bit i of the result is set when arr[i] != 0 (the engine's skull-active byte array); count <= 64. Read only.
+    inline uint64_t ActiveMask(const uint8_t* arr, int count) {
+        uint64_t m = 0;
+        for (int i = 0; i < count && i < 64; i++)
+            if (arr[i]) m |= (1ULL << i);
+        return m;
+    }
+
     // What the ~2 s integrity check does (QA 7b m2). enabled = hooks we think are installed, intact = of those, how
     // many still start with MinHook's jump. A reload looks like "identity same, no prologue is ours any more";
     // a foreign patch on one function looks like "some are intact": drop only those, keep anchors and the rest.

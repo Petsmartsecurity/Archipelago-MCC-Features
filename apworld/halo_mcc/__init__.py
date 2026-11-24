@@ -61,6 +61,14 @@ class MCCWorld(World):
         return [g for g, on in (("CE", self.options.ce_enabled), ("H2", self.options.h2_enabled)) if on]
 
     def fill_slot_data(self) -> dict[str, Any]:
+        data = self._slot_data()
+        if self.options.h2_enabled:
+            # only with Halo 2 on, so a CE-only seed's slot_data is exactly what it was (ce_golden)
+            data["h2_skullsanity"] = self.options.h2_skullsanity.value
+            data["h2_legendary_skulls"] = int(bool(self.options.h2_legendary_skulls.value))
+        return data
+
+    def _slot_data(self) -> dict[str, Any]:
         return {
             "final_mission": self.final_mission,
             # skull items are CE-only: with CE off the launcher must not force skulls nothing can release (QA 8.H2.6 M2)

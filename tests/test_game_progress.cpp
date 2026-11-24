@@ -2,6 +2,7 @@
 #include "game_progress.h"
 #include "kill_tracker.h"
 #include "data/h2_map.h"
+#include "data/h2_skull_map.h"
 #include "data/kill_map.h"
 #include "data/mission_map.h"
 
@@ -293,7 +294,30 @@ static void TestOneFinal() {
     CHECK(!un.Decide({ "CE", "H2" }, kMissing, true).sendGoal && un.Decide({ "CE" }, kMissing, true).release.empty());
 }
 
+// Generated Halo 2 skull table (8.H2.9b): 15 rows indexed by engine skull id, ids in their mission's block, item id = base + bit.
+static void TestH2Skulls() {
+    static_assert(sizeof(kH2Skulls) / sizeof(kH2Skulls[0]) == 15);
+    static_assert(kH2SkullItemBase == 92000);
+    int legendary = 0;
+    for (int n = 0; n < 15; n++) {
+        const H2SkullRow& r = kH2Skulls[n];
+        bool found = false;
+        for (const H2MissionRow& m : kH2Missions) {
+            int64_t off = r.locationId - m.id;
+            if (off == 21 || off == 22) found = true;
+        }
+        CHECK(found);
+        CHECK(r.bit >= 0 && r.bit <= 37);
+        legendary += r.legendaryOnly ? 1 : 0;
+        CHECK(GameProgress::GameOfLocation(r.locationId) == Game::H2);
+    }
+    CHECK(legendary == 7);
+    CHECK(kH2Skulls[5].locationId == 204021 && kH2Skulls[6].locationId == 204022);   // Outskirts has two
+    CHECK(kH2SkullItemBase + kH2Skulls[13].bit == 92000);                            // Anger = bit 0
+}
+
 int main() {
+    TestH2Skulls();
     TestTables();
     TestOldSeedAndCeOnly();
     TestH2();
