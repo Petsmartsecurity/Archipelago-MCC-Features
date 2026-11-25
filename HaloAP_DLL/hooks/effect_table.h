@@ -11,6 +11,8 @@
 // so `1` is a huge overshield and no other value is safe across maps; QA item-effects-a M2).
 // Also not: 81103 (explosion fallback via damage_object): the damage is not capped, so it can kill from low
 // health (research 3.1.6); phase A has no health read to guard it. Phase B items (81003..81010, 81102, 81106) need the frame hook.
+// 81101 does use damage_object, but only with the one 10-point, no-area tag "weapons\assault rifle\bullet" (gate effect-commands
+// pins the tag, its values and its presence in all 10 maps): the hit restarts the shield recharge delay, then the shield is set to 0.
 #include <cstddef>
 
 namespace haloap {
@@ -32,7 +34,7 @@ namespace fx {
         { 81011, "Invulnerable", "(set cheat_deathless_player true)", "(set cheat_deathless_player false)", 20000, "deathless", false },
         { 81012, "Infinite Ammo", "(set cheat_infinite_ammo true)", "(set cheat_infinite_ammo false)", 30000, "ammo", false },
         { 81013, "Moon Gravity", "(physics_set_gravity 0.4)", "(physics_constants_reset)", 30000, "gravity", false },
-        { 81101, "Shields Down", "(object_set_shield (list_get (players) 0) 0)", "", 0, "", true },
+        { 81101, "Shields Down", "(begin (damage_object \"weapons\\assault rifle\\bullet\" (list_get (players) 0)) (object_set_shield (list_get (players) 0) 0))", "", 0, "", true },
         { 81104, "Heavy Gravity", "(physics_set_gravity 2.0)", "(physics_constants_reset)", 20000, "gravity", true },
         { 81105, "Slow Motion", "(game_speed 0.5)", "(game_speed 1)", 15000, "speed", true },
     };
