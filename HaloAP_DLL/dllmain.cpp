@@ -19,6 +19,7 @@
 #include "hooks/kill_hook.h"
 #include "hooks/h2_observe.h"
 #include "hooks/effects.h"
+#include "hooks/effect_native.h"
 
 
 #pragma comment(lib, "psapi.lib")
@@ -72,10 +73,12 @@ namespace
         {
             printf("Kill hook not installed: kill events (telemetry / killsanity) are off this session.\n");
         }
+        haloap::InstallNativeEffects();  // effect items, phase B: logs its own failures; native items then skip cleanly
     }
 
     void UninstallHalo1Hooks()
     {
+        haloap::UninstallNativeEffects();
         haloap::UninstallMissionLoadHook();
         haloap::UninstallMissionCompleteHook();
         haloap::UninstallMissionIdLookupHook();

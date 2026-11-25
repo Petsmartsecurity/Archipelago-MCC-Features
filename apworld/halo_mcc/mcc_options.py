@@ -236,13 +236,16 @@ class H2SkullsRequired(Range):
 class EffectItems(Toggle):
     """
     EXPERIMENTAL. Replaces the plain "filler" items with effect items that act on the running game when received:
-    a mix of helpful ones (Medkit, 20 s Invulnerable, 30 s Infinite Ammo, 30 s Moon Gravity) and traps
-    (Shields Down, 20 s Heavy Gravity, 15 s Slow Motion). Traps are not meant to kill you, but changed gravity can make a fall
-    more dangerous. Only filler is replaced,
+    helpful ones (Medkit, Overshield, 30 s Active Camo, Ammo Refill, Grenade Pack, Magnum / Shotgun / Sniper Rifle / Rocket Launcher
+    drops that land on the ground next to you with full ammo, 20 s Invulnerable, 30 s Infinite Ammo, 30 s Moon Gravity) and the
+    trap Shields Down (your shield drops to zero and does not recharge for 5 seconds; health is untouched). A weapon drop gives a
+    similar weapon on a map that lacks the wanted one (no sniper rifle in that map: a rocket launcher, shotgun, ...). Traps are not
+    meant to kill you, but you are weaker for a moment. Only filler is replaced,
     so no check, mission or skull item changes; only Halo CE (it does nothing if ce_enabled is off).
 
-    An effect waits until you are in a mission (and is applied at most one per 10 seconds); effects do not survive a checkpoint
-    revert; they are never repeated when you reconnect. Off by default: not yet tested in a long play session.
+    An effect waits until you are in a mission, alive, on foot (drops, ammo) and out of cutscenes, and is applied at most one per
+    10 seconds; effects do not survive a checkpoint revert; they are never repeated when you reconnect. Off by default: not yet
+    tested in a long play session.
     """
     display_name = "Effect Items"
     default = False

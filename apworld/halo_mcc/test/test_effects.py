@@ -13,6 +13,14 @@ from .ce_snapshot import build
 FROZEN = {
     81001: ("Effect: Medkit", ItemClassification.filler),
     81002: ("Effect: Recharged Shields", ItemClassification.filler),
+    81003: ("Effect: Sniper Rifle Drop", ItemClassification.filler),
+    81004: ("Effect: Shotgun Drop", ItemClassification.filler),
+    81005: ("Effect: Magnum Drop", ItemClassification.filler),
+    81006: ("Effect: Rocket Launcher Drop", ItemClassification.filler),
+    81007: ("Effect: Overshield", ItemClassification.filler),
+    81008: ("Effect: Active Camo", ItemClassification.filler),
+    81009: ("Effect: Grenade Pack", ItemClassification.filler),
+    81010: ("Effect: Ammo Refill", ItemClassification.filler),
     81011: ("Effect: Invulnerable (20 s)", ItemClassification.filler),
     81012: ("Effect: Infinite Ammo (30 s)", ItemClassification.filler),
     81013: ("Effect: Moon Gravity (30 s)", ItemClassification.filler),
@@ -45,6 +53,25 @@ class TestEffectItems(MCCTestBase):
         self.assertEqual(self.world.fill_slot_data()["effect_items"], 0)
         self.assertEqual({i.name for i in self.multiworld.itempool if i.name.startswith(("Effect:", "Trap:"))}, set())
         self.assertEqual(self.world.get_filler_item_name(), "filler")
+
+
+class TestPhaseBItems(unittest.TestCase):
+    def test_all_phase_b_items_are_generated_and_weapons_are_rarer(self):
+        from .. import items
+        weights = {name: w for name, _, _, w in items.CE_EFFECT_ITEMS}
+        for name in ("Effect: Sniper Rifle Drop", "Effect: Shotgun Drop", "Effect: Rocket Launcher Drop"):
+            self.assertLess(weights[name], weights["Effect: Medkit"], name)  # power weapons are rarer than the Medkit
+        seen = set()
+        for seed in range(1, 9):
+            _, got = pool({"effect_items": True, "trap_percentage": 0, "kill_milestone_interval": 10}, seed=seed)
+            seen |= {i.name for i in got}
+        for item_id in (81003, 81004, 81005, 81006, 81007, 81008, 81009, 81010):
+            self.assertIn(FROZEN[item_id][0], seen)
+        self.assertEqual({i[2] for i in items.CE_EFFECT_ITEMS if i[0] != "Trap: Shields Down"}, {ItemClassification.filler})
+
+    def test_off_means_off(self):
+        _, got = pool({}, seed=3)
+        self.assertEqual({i.name for i in got if i.name.startswith(("Effect:", "Trap:"))}, set())
 
 
 class TestEffectPool(unittest.TestCase):

@@ -5,12 +5,15 @@
 // this same file. Keep every row on ONE line: the Python readers parse them with a regex.
 //
 // Row = { AP item id, name, apply command, undo command ("" = none), duration in ms (0 = one-shot), undo group, trap }.
-// Commands are HaloScript expressions without the "HS: " prefix (PostHaloScript adds it). Timed effects of the same group
+// Commands are HaloScript expressions without the "HS: " prefix (PostHaloScript adds it), or "native:<op>" (phase B, ADR-005: the op
+// runs inside the gateway detour, hooks/effect_native.*; <op> must be one of kOpNames in effect_native_logic.h, the gate checks it
+// and native rows are always one-shots). Timed effects of the same group
 // replace each other (a later gravity effect cancels the earlier one's timer, so the first undo cannot cut the second short).
 // Not in the table on purpose: 81002 Recharged Shields (retired: object_set_shield writes frac * max shield into a 0..1 fraction,
 // so `1` is a huge overshield and no other value is safe across maps; QA item-effects-a M2).
 // Also not: 81103 (explosion fallback via damage_object): the damage is not capped, so it can kill from low
-// health (research 3.1.6); phase A has no health read to guard it. Phase B items (81003..81010, 81102, 81106) need the frame hook.
+// health (research 3.1.6); phase A has no health read to guard it. Phase B built so far: 81003..81010 and 81101 (native, gateway).
+// Next (not built): 81102 Plasma Pistol Swap, 81103 Live Grenade, 81106 Disarmed, 81107 Skull Trap.
 #include <cstddef>
 
 namespace haloap {
@@ -29,10 +32,18 @@ namespace fx {
     // player 0's unit; "(unit (list_get (players) 0))" is the research doc's spelling (2.1: `unit` is the object -> unit cast)
     constexpr EffectDef kEffects[] = {
         { 81001, "Medkit", "(unit_set_current_vitality (unit (list_get (players) 0)) 9999 9999)", "", 0, "", false },
+        { 81003, "Sniper Rifle Drop", "native:sniper_drop", "", 0, "", false },
+        { 81004, "Shotgun Drop", "native:shotgun_drop", "", 0, "", false },
+        { 81005, "Magnum Drop", "native:magnum_drop", "", 0, "", false },
+        { 81006, "Rocket Launcher Drop", "native:rocket_drop", "", 0, "", false },
+        { 81007, "Overshield", "native:overshield", "", 0, "", false },
+        { 81008, "Active Camo", "native:active_camo", "", 0, "", false },
+        { 81009, "Grenade Pack", "native:grenade_pack", "", 0, "", false },
+        { 81010, "Ammo Refill", "native:ammo_refill", "", 0, "", false },
         { 81011, "Invulnerable", "(set cheat_deathless_player true)", "(set cheat_deathless_player false)", 20000, "deathless", false },
         { 81012, "Infinite Ammo", "(set cheat_infinite_ammo true)", "(set cheat_infinite_ammo false)", 30000, "ammo", false },
         { 81013, "Moon Gravity", "(physics_set_gravity 0.4)", "(physics_constants_reset)", 30000, "gravity", false },
-        { 81101, "Shields Down", "(object_set_shield (list_get (players) 0) 0)", "", 0, "", true },
+        { 81101, "Shields Down", "native:shields_down", "", 0, "", true },
         { 81104, "Heavy Gravity", "(physics_set_gravity 2.0)", "(physics_constants_reset)", 20000, "gravity", true },
         { 81105, "Slow Motion", "(game_speed 0.5)", "(game_speed 1)", 15000, "speed", true },
     };

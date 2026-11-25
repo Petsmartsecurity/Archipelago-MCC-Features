@@ -232,7 +232,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "6261a9aca47b6be6",
+    "items": "67ccbf0111f2f717",
     "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
@@ -247,17 +247,19 @@
     ],
     "n_items": 134,
     "n_locs": 134,
-    "n_probes": 31,
-    "placed": "d3bfd02d2e415756",
+    "n_probes": 39,
+    "placed": "b8077dac27891ce8",
     "precollected": [
      "The Pillar of Autumn Access"
     ],
-    "probes": "d7e674f124803504",
+    "probes": "119692918425ac99",
     "rng_next": 0.8474337369372327,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -279,7 +281,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "43a7fc28846f72c7",
+    "items": "2778b9fc89e79832",
     "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
@@ -294,17 +296,19 @@
     ],
     "n_items": 134,
     "n_locs": 134,
-    "n_probes": 31,
-    "placed": "248af9eb2a5c2bfd",
+    "n_probes": 39,
+    "placed": "f0435bbdbda9e2f5",
     "precollected": [
      "Two Betrayals Access"
     ],
-    "probes": "616278c5e8b9ef21",
+    "probes": "5839b22dac5ccac9",
     "rng_next": 0.7940590105180981,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -326,7 +330,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "c07efaa21a372702",
+    "items": "6c9649ebf0a888a0",
     "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
@@ -341,17 +345,19 @@
     ],
     "n_items": 134,
     "n_locs": 134,
-    "n_probes": 31,
-    "placed": "d88ac9a885709af4",
+    "n_probes": 39,
+    "placed": "006cdf8e08766cf7",
     "precollected": [
      "343 Guilty Spark Access"
     ],
-    "probes": "7638f2f7685cf448",
+    "probes": "a659eb251a9fa046",
     "rng_next": 0.9478274870593494,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -373,7 +379,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "28b2c23cdb7f340a",
+    "items": "9cee60c1e8d7008d",
     "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
@@ -388,17 +394,19 @@
     ],
     "n_items": 134,
     "n_locs": 134,
-    "n_probes": 31,
-    "placed": "a853e96c8265b77e",
+    "n_probes": 39,
+    "placed": "c9669c2b77879f03",
     "precollected": [
      "343 Guilty Spark Access"
     ],
-    "probes": "7638f2f7685cf448",
+    "probes": "a659eb251a9fa046",
     "rng_next": 0.5442292252959519,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -420,7 +428,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "a86514d3c1e856c1",
+    "items": "bcd47ab022a45489",
     "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
@@ -435,17 +443,19 @@
     ],
     "n_items": 134,
     "n_locs": 134,
-    "n_probes": 31,
-    "placed": "5fc39eb0cfa539d7",
+    "n_probes": 39,
+    "placed": "a4b6002fd027e796",
     "precollected": [
      "Keyes Access"
     ],
-    "probes": "e0c39cdbee4f96be",
+    "probes": "2f7af3fe2e17e4f7",
     "rng_next": 0.1031660342307158,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -467,7 +477,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "26a0970028d2a73b",
+    "items": "464010bc8eed0aeb",
     "locs": "56687f489015120a",
     "missions": [
      "The Pillar of Autumn",
@@ -482,17 +492,19 @@
     ],
     "n_items": 134,
     "n_locs": 134,
-    "n_probes": 31,
-    "placed": "fc8a85cfcc45841b",
+    "n_probes": 39,
+    "placed": "0c63e912b1290255",
     "precollected": [
      "Halo (CE) Access"
     ],
-    "probes": "9d6c0bab9d29b6f7",
+    "probes": "6739cc1e7007cacf",
     "rng_next": 0.7417869892607294,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -512,7 +524,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "696bf9329e67c674",
+    "items": "24c71238f951a0fc",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -527,17 +539,19 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 32,
-    "placed": "d32644ad03d71463",
+    "n_probes": 36,
+    "placed": "5fac4104a68e6595",
     "precollected": [
      "The Pillar of Autumn Access"
     ],
-    "probes": "c65c86eaa2dfc7d8",
+    "probes": "298f215635907ed8",
     "rng_next": 0.8474337369372327,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -557,7 +571,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "e9c44b22fa2f7a54",
+    "items": "474cd9d216557e62",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -572,17 +586,19 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 32,
-    "placed": "91b2c18a275bc459",
+    "n_probes": 39,
+    "placed": "f817f3e6f2f5ad15",
     "precollected": [
      "Two Betrayals Access"
     ],
-    "probes": "762c3d78b1bd7650",
+    "probes": "aafb960ee5cf4b6c",
     "rng_next": 0.7940590105180981,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -602,7 +618,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "1cf88a8367f0f94c",
+    "items": "2d730f95cf9d9bf6",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -617,17 +633,19 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 32,
-    "placed": "7cb4be47f123f915",
+    "n_probes": 38,
+    "placed": "3d31a07c29a4a33a",
     "precollected": [
      "343 Guilty Spark Access"
     ],
-    "probes": "7c1458ce59c2e517",
+    "probes": "268a2b5b36f919c7",
     "rng_next": 0.9478274870593494,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -647,7 +665,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "94f44492f2fb6f71",
+    "items": "17a68cbae4f19618",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -662,17 +680,19 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 32,
-    "placed": "68d5bb084c78906a",
+    "n_probes": 38,
+    "placed": "41da3301a0225851",
     "precollected": [
      "343 Guilty Spark Access"
     ],
-    "probes": "7c1458ce59c2e517",
+    "probes": "d61a08dd062e0d42",
     "rng_next": 0.5442292252959519,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -692,7 +712,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "6989a5ece6b578c0",
+    "items": "b52fb02ecb17af88",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -707,17 +727,19 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 32,
-    "placed": "3eb84411cddf6071",
+    "n_probes": 40,
+    "placed": "247cdae90466ebcc",
     "precollected": [
      "Keyes Access"
     ],
-    "probes": "81189f24469435d0",
+    "probes": "e299d62e01b0dc4b",
     "rng_next": 0.1031660342307158,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -737,7 +759,7 @@
    "snap": {
     "beatable": true,
     "final": "The Maw",
-    "items": "e879eaaa3a92362e",
+    "items": "f7df2bc0b80c56c6",
     "locs": "7167b3056a161704",
     "missions": [
      "The Pillar of Autumn",
@@ -752,17 +774,19 @@
     ],
     "n_items": 52,
     "n_locs": 52,
-    "n_probes": 32,
-    "placed": "820a299c11abefec",
+    "n_probes": 38,
+    "placed": "ddf7d5b9cfa26d26",
     "precollected": [
      "Halo (CE) Access"
     ],
-    "probes": "8262845c274e2862",
+    "probes": "92371a1ef30c5a41",
     "rng_next": 0.7417869892607294,
     "slot": {
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -810,6 +834,8 @@
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -857,6 +883,8 @@
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -904,6 +932,8 @@
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -951,6 +981,8 @@
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -998,6 +1030,8 @@
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,
@@ -1045,6 +1079,8 @@
      "ce_enabled": 1,
      "effect_items": 1,
      "final_mission": "The Maw",
+     "goal_game": "",
+     "goal_mode": 0,
      "h2_enabled": 0,
      "h2_final_mission": "",
      "kill_infection_interval": 0,

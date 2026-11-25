@@ -17,8 +17,8 @@ H2_SKULL_NONSCORING: list[str] = [f"{n} Skull (Halo 2)" for n in H2_SKULL_NAMES 
 # Classification: good effects are `filler`, not `useful`: kill locations above kill_milestone_progression_percent are EXCLUDED and
 # only accept filler/trap, so a pool of `useful` effects made generation fail ("Not enough filler items for excluded locations").
 # Effect items (ADR-005, docs/research/item-effects.md 4.1/4.2): ids 80000 + game*1000 + k (CE = 81000..81999), good k 1..99,
-# traps k 101..199. Append-only once released: never renumber or rename. Gaps are intended (81003-81010 and 81102/81103/81106+
-# are phase B / not yet built). The DLL runs the matching HaloScript (hooks/effect_table.h; tests/test_effect_ids_agree.py ties
+# traps k 101..199. Append-only once released: never renumber or rename. Gaps are intended (81102 Plasma Pistol Swap, 81103 Live Grenade,
+# 81106 Disarmed and 81107 Skull Trap are phase B items not built yet). The DLL runs the matching HaloScript or native op (hooks/effect_table.h; tests/test_effect_ids_agree.py ties
 # the two). Weight = relative chance among the good items (or among the traps) when filler is replaced.
 # Retired before release use (ADR-005 After QA M2): keeps its id and name in the data package (append-only) but is never generated
 # and the DLL has no command for it. `object_set_shield` writes frac * max shield into a 0..1 fraction, so no value is safely "full".
@@ -34,6 +34,16 @@ CE_EFFECT_ITEMS: list[tuple[str, int, ItemClassification, int]] = [
     ("Effect: Invulnerable (20 s)", 81011, ItemClassification.filler, 2),
     ("Effect: Infinite Ammo (30 s)", 81012, ItemClassification.filler, 2),
     ("Effect: Moon Gravity (30 s)", 81013, ItemClassification.filler, 2),
+    # phase B (native ops through the DLL's gateway, ADR-005): weapon drops land on the ground next to the player with full ammo and
+    # fall back to a similar weapon on maps that lack the wanted one (the DLL logs what dropped); the power weapons are rarer
+    ("Effect: Sniper Rifle Drop", 81003, ItemClassification.filler, 1),
+    ("Effect: Shotgun Drop", 81004, ItemClassification.filler, 1),
+    ("Effect: Magnum Drop", 81005, ItemClassification.filler, 2),
+    ("Effect: Rocket Launcher Drop", 81006, ItemClassification.filler, 1),
+    ("Effect: Overshield", 81007, ItemClassification.filler, 2),
+    ("Effect: Active Camo", 81008, ItemClassification.filler, 2),
+    ("Effect: Grenade Pack", 81009, ItemClassification.filler, 3),
+    ("Effect: Ammo Refill", 81010, ItemClassification.filler, 3),
     ("Trap: Shields Down", 81101, ItemClassification.trap, 3),
 ]
 EFFECT_BY_NAME = {**CE_EFFECT_RETIRED, **{name: (item_id, cls) for name, item_id, cls, _ in CE_EFFECT_ITEMS}}

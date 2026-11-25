@@ -2,6 +2,7 @@
 #include "hooks/effect_queue.h"
 
 #include <cstdio>
+#include <string_view>
 
 using namespace haloap::fx;
 
@@ -28,7 +29,8 @@ int main() {
     for (size_t i = 0; i < kEffectCount; i++) {
         for (size_t j = i + 1; j < kEffectCount; j++) CHECK(kEffects[i].id != kEffects[j].id);
         CHECK(kEffects[i].id >= 81000 && kEffects[i].id < 82000);
-        CHECK(kEffects[i].apply[0] == '(');
+        CHECK(kEffects[i].apply[0] == '(' || std::string_view(kEffects[i].apply).substr(0, 7) == "native:");  // phase B rows run native ops
+        if (kEffects[i].apply[0] == 'n') CHECK(kEffects[i].durationMs == 0 && !kEffects[i].undo[0]);  // native rows are one-shots
         if (kEffects[i].durationMs > 0) CHECK(kEffects[i].undo[0] == '(' && kEffects[i].group[0]);
         else CHECK(!kEffects[i].undo[0]);
     }
