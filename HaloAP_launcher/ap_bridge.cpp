@@ -2,6 +2,7 @@
 #include "compat.h"
 #include "data/chapter_map.h"
 #include "shared/common.h"
+#include "shared/difficulty.h"
 #include "data/kill_map.h"
 #include "pipe_protocol.h"
 #include <atomic>
@@ -247,7 +248,7 @@ namespace haloap {
             // Mission code comes from a path like "levels\d40\d40" (parsed in pipe_protocol.cpp).
             if (auto code = ParseMissionLoad(message)) {
                 m_mission = *code;
-                if (m_telemetry) m_telemetry->MissionLoad(m_mission);
+                if (m_telemetry) m_telemetry->MissionLoad(m_mission, ParseDiffToken(message));
             } else {
                 m_mission.clear();  // don't tag later events with the previous mission
             }

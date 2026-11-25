@@ -1,5 +1,7 @@
 #include "telemetry_log.h"
 
+#include "shared/difficulty.h"
+
 #include <cstdio>
 #include <ctime>
 #include <exception>
@@ -93,11 +95,18 @@ namespace haloap {
         }
     }
 
-    void TelemetryLog::MissionLoad(const std::string& mission) {
+    namespace {
+        std::string DifficultyField(int difficulty) {
+            std::string j = DifficultyJson(difficulty);
+            return j.empty() ? j : ",\"difficulty\":" + j;
+        }
+    }
+
+    void TelemetryLog::MissionLoad(const std::string& mission, int difficulty) {
         std::lock_guard<std::mutex> lock(m_mutex);
         ++m_gen;
         m_rejected = 0;
-        WriteLine("mission_load", ",\"mission\":" + JsonString(mission));
+        WriteLine("mission_load", ",\"mission\":" + JsonString(mission) + DifficultyField(difficulty));
     }
 
     void TelemetryLog::Pipe(bool connected) {
@@ -159,8 +168,9 @@ namespace haloap {
             text += piece;
             i += n ? n : 1;
         }
+        const std::string diff = DifficultyField(ParseDiffToken(msg));  // same field as CE mission_load
         std::lock_guard<std::mutex> lock(m_mutex);
-        WriteLine("h2", ",\"msg\":" + JsonString(text));
+        WriteLine("h2", ",\"msg\":" + JsonString(text) + diff);
     }
 
     void TelemetryLog::Swarm(const std::string& mission, const SwarmEvent& e) {

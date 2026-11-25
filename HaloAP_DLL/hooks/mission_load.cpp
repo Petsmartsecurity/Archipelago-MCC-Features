@@ -5,6 +5,8 @@
 #include "skull_hook.h"
 #include "effects.h"
 #include "shared/common.h"
+#include "shared/difficulty.h"
+#include <cstdint>
 #include <cstdio>
 #include <intrin.h>
 #include <psapi.h>
@@ -18,6 +20,44 @@ namespace haloap {
     namespace {
         const char* kPattern =
             "40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 B0 EE FF FF B8 50 12 00 00 E8 ? ? ? ?";
+
+        // Campaign difficulty (PLAN 5.5), read-only. The pattern is the `mov rax,[game globals]` at the start of the
+        // difficulty switch in encounter_place (0xbe0d54), followed by `movzx ecx, word [rax+0x158]` (V: unique in halo1.dll).
+        const char* kDifficultyPattern =
+            "48 8B 05 ? ? ? ? 41 0F B7 F9 0F B7 88 58 01 00 00 66 85 C9 78 ? B8 01 00 00 00 66 3B C8 7E";
+        const uint8_t* const* g_globalsVar = nullptr;  // the global that holds the game globals pointer; null = difficulty unavailable
+
+        // Plain C function (no C++ objects) so __try is allowed. -1 = unreadable. Never writes.
+        int ReadDifficulty() {
+            if (!g_globalsVar) return -1;
+            __try {
+                return DifficultyFromGlobals(*g_globalsVar);
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER) {
+                return -1;
+            }
+        }
+
+        void ResolveDifficulty(HMODULE halo1) {
+            g_globalsVar = nullptr;
+            int hits = 0;
+            const uint8_t* p = static_cast<const uint8_t*>(FindUniquePatternInModule(halo1, kDifficultyPattern, &hits));
+            if (!p) {
+                printf("[hook] (mission_load) difficulty signature %s; difficulty not logged\n", hits ? "ambiguous" : "not found");
+                return;
+            }
+            int32_t disp;
+            memcpy(&disp, p + 3, sizeof(disp));
+            const uint8_t* var = p + 7 + disp;
+            auto base = reinterpret_cast<const uint8_t*>(halo1);
+            auto nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(base + reinterpret_cast<const IMAGE_DOS_HEADER*>(base)->e_lfanew);
+            if (var < base || var + sizeof(void*) > base + nt->OptionalHeader.SizeOfImage) {
+                printf("[hook] (mission_load) difficulty global outside the module image; difficulty not logged\n");
+                return;
+            }
+            g_globalsVar = reinterpret_cast<const uint8_t* const*>(var);
+            printf("[hook] (mission_load) difficulty global at %p\n", static_cast<const void*>(var));
+        }
 
         typedef void (*BeginMissionLoadFn)(void* p1, void* p2, const char* path,
             unsigned int p4, char p5);
@@ -95,23 +135,25 @@ namespace haloap {
             //USHORT framesCaptured = RtlCaptureStackBackTrace(
             //    kFramesToSkip, kFramesToCapture, stackFrames, nullptr);
 
-            // Log the load itself.
-            char buf[1024];
-            snprintf(buf, sizeof(buf),
-                "MISSION_LOAD: path='%s'", path ? path : "(null)");
-            printf("[hook] %s\n", buf);
-            if (g_pipe && g_pipe->IsConnected()) {
-                g_pipe->SendAsync(buf);
-            }
-            
             int missionIdx = GetMissionIndexFromPath(path);
             bool isLocked = (missionIdx >= 0 && !GetItemHandler().isMissionAllowed(missionIdx));
-            
+
             if (g_originalBeginMissionLoad)
             {
                 g_originalBeginMissionLoad(p1, p2, path, p4, p5);
             }
-            
+
+            // Log the load itself, after the original so the game globals already hold this load's difficulty
+            // (R: confirm in game that a first load after changing difficulty reports the new value).
+            // " diff=<n>" is the difficulty, -1 = unreadable (PLAN 5.5).
+            char buf[1024];
+            snprintf(buf, sizeof(buf),
+                "MISSION_LOAD: path='%s' diff=%d", path ? path : "(null)", ReadDifficulty());
+            printf("[hook] %s\n", buf);
+            if (g_pipe && g_pipe->IsConnected()) {
+                g_pipe->SendAsync(buf);
+            }
+
             // ALWAYS call original.
             if (isLocked)
             {
@@ -154,6 +196,7 @@ namespace haloap {
             return false;
         }
 
+        ResolveDifficulty(halo1);  // optional: a miss only means no `diff=` on the message
         g_hookTarget = target;
         printf("[hook] (mission_load) BeginMissionLoad found at %p\n", target);
 
@@ -181,6 +224,7 @@ namespace haloap {
             g_hookTarget = nullptr;
         }
         g_originalBeginMissionLoad = nullptr;
+        g_globalsVar = nullptr;
         g_pipe = nullptr;
     }
 

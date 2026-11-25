@@ -18,7 +18,9 @@ namespace haloap {
         // The `session` line (build tag + launcher version) is written once, first, when the file is created.
         explicit TelemetryLog(std::string dir, std::string build = "", std::string launcherVersion = haloap::kVersion);
 
-        void MissionLoad(const std::string& mission);  // increments `gen`, resets the rejected counter
+        // Increments `gen`, resets the rejected counter. `difficulty` (PLAN 5.5): the campaign difficulty from the DLL
+        // (0 easy .. 3 legendary), written as the `difficulty` field; negative = unknown, field left out.
+        void MissionLoad(const std::string& mission, int difficulty = -1);
         void Pipe(bool connected);
         void Rejected();  // a KILL/ERASE failed to parse; reported as "rejected" on mission_end
         void MissionEnd(const std::string& mission, const std::string& reason);

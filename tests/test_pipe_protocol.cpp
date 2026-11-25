@@ -3,6 +3,7 @@
 #include "pending_checks.h"
 #include "telemetry_log.h"
 #include "shared/ai_event_format.h"
+#include "shared/difficulty.h"
 
 #include <algorithm>
 #include <chrono>
@@ -57,6 +58,28 @@ static void TestMissionLoad() {
     CHECK(!ParseMissionLoad("MISSION_LOAD: levels\\d40"));
     CHECK(!ParseMissionLoad("MISSION_LOAD: levels\\\\x"));
     CHECK(!ParseMissionLoad("CHAPTER:1"));
+}
+
+static void TestDifficulty() {
+    CHECK(ParseMissionLoad("MISSION_LOAD: path='levels\\a10\\a10' diff=2") == std::string("a10"));  // suffix does not disturb the code
+    CHECK(ParseDiffToken("MISSION_LOAD: path='levels\\a10\\a10' diff=2") == 2);
+    CHECK(ParseDiffToken("MISSION_LOAD: path='levels\\a10\\a10' diff=0") == 0);
+    CHECK(ParseDiffToken("MISSION_LOAD: path='levels\\a10\\a10' diff=-1") == -1);
+    CHECK(ParseDiffToken("MISSION_LOAD: path='levels\\a10\\a10'") == -1);            // old DLL: no field
+    CHECK(ParseDiffToken("ev=skull diff=3 code=x") == 3);
+    CHECK(ParseDiffToken("ev=x diff=- code=x") == -1);
+    CHECK(ParseDiffToken("ev=x diff=3x") == -1);
+    CHECK(ParseDiffToken("ev=x diff=") == -1);
+    CHECK(ParseDiffToken("ev=x diff=1234567") == -1);                                    // too long to be a difficulty
+    CHECK(ParseDiffToken("") == -1);
+    CHECK(std::string(DifficultyName(0)) == "easy" && std::string(DifficultyName(1)) == "normal");
+    CHECK(std::string(DifficultyName(2)) == "heroic" && std::string(DifficultyName(3)) == "legendary");
+    CHECK(DifficultyName(4) == nullptr && DifficultyName(-1) == nullptr);
+    CHECK(DifficultyJson(3) == "\"legendary\"" && DifficultyJson(9) == "9" && DifficultyJson(-1).empty());
+    uint8_t g[0x200] = {};                                                               // fake game globals block
+    g[kGlobalsDifficultyOffset] = 2;
+    CHECK(DifficultyFromGlobals(g) == 2);
+    CHECK(DifficultyFromGlobals(nullptr) == -1);
 }
 
 static void TestMissionLoadH2() {
@@ -394,6 +417,11 @@ static void TestTelemetry() {
         log.H2("mission_load code=03a\t\"x\"\x01 \xc3\xa9 bad=\xff.");
         log.H2(std::string(5000, 'z'));
         log.H2("ev=skull n=4 tid=5 tick=900 path=notify_event n=5 plr=0 src=73de5e code=03a_oldmombasa diff=3");  // 8.H2.9b skull line
+        log.MissionLoad("a50", 3);   // PLAN 5.5: legendary
+        log.MissionLoad("b30", 7);   // unknown value: the raw number
+        log.MissionLoad("b40", -1);  // unreadable: no field
+        log.MissionLoad("c10", 2);
+        log.H2("ev=start n=1 mode=1 map=2 diff=-");  // unreadable on a Halo 2 line: no field
         std::string got = NormT(ReadAll(log.Path()));
         std::string want =
             "{\"ev\":\"session\",\"t\":N,\"gen\":0,\"build\":\"build1\",\"launcher\":\"0.1\"}\n"
@@ -416,7 +444,12 @@ static void TestTelemetry() {
             "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"mission_load code=03a\\t\\\"x\\\"\\u0001 \xc3\xa9 bad=\xef\xbf\xbd.\"}\n"
             "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"" + std::string(2048, 'z') + "\"}\n"
             "{\"ev\":\"h2\",\"t\":N,\"gen\":2,\"msg\":\"ev=skull n=4 tid=5 tick=900 path=notify_event n=5 plr=0 src=73de5e "
-            "code=03a_oldmombasa diff=3\"}\n";
+            "code=03a_oldmombasa diff=3\",\"difficulty\":\"legendary\"}\n"
+            "{\"ev\":\"mission_load\",\"t\":N,\"gen\":3,\"mission\":\"a50\",\"difficulty\":\"legendary\"}\n"
+            "{\"ev\":\"mission_load\",\"t\":N,\"gen\":4,\"mission\":\"b30\",\"difficulty\":7}\n"
+            "{\"ev\":\"mission_load\",\"t\":N,\"gen\":5,\"mission\":\"b40\"}\n"
+            "{\"ev\":\"mission_load\",\"t\":N,\"gen\":6,\"mission\":\"c10\",\"difficulty\":\"heroic\"}\n"
+            "{\"ev\":\"h2\",\"t\":N,\"gen\":6,\"msg\":\"ev=start n=1 mode=1 map=2 diff=-\"}\n";
         CHECK(got == want);
         if (got != want) std::printf("got:\n%s\n", got.c_str());
     }
@@ -439,6 +472,7 @@ int main() {
     TestMissionComplete();
     TestMissionLoad();
     TestMissionLoadH2();
+    TestDifficulty();
     TestChapter();
     TestPending();
     std::printf("native-tests: %d checks, %d failed\n", g_checks, g_failures);
