@@ -211,6 +211,11 @@ namespace haloap {
             if (m_telemetry) m_telemetry->H2(message.substr(4));
             return true;
         }
+        if (message.rfind("H3: ", 0) == 0) {
+            // Observe-only (PLAN 8.H3.2): telemetry line, no other effect (no check, no lock, no goal).
+            if (m_telemetry) m_telemetry->H3(message.substr(4));
+            return true;
+        }
         if (message.rfind("SWARM: ", 0) == 0) {
             // Log-only (PLAN 5.7): telemetry line, never the kill tracker, locations or goal.
             if (auto sw = ParseSwarmEvent(message)) {

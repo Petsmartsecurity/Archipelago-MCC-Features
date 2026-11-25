@@ -18,6 +18,7 @@
 #include "hooks/skull_hook.h"
 #include "hooks/kill_hook.h"
 #include "hooks/h2_observe.h"
+#include "hooks/h3_observe.h"
 #include "hooks/effects.h"
 #include "hooks/effect_native.h"
 
@@ -101,6 +102,7 @@ namespace
     void UninstallAllHooks()
     {
         haloap::UninstallH2Observe();
+        haloap::UninstallH3Observe();
         haloap::UninstallMissionSelectBlockHook();
         UninstallVtableHooks();
         UninstallHalo1Hooks();
@@ -514,7 +516,8 @@ namespace
 
             // Not while Halo 2 is the loaded game: the skull mask is MCC-wide, its "in mission" guard is CE-only, and the
             // Halo 2 build changes nothing in the game (QA 8.H2.7b M1).
-            if (currentHalo1 || !GetModuleHandleA("halo2.dll")) haloap::ApplyForcedSkulls();
+            // Same for Halo 3 (PLAN 8.H3.2: the observe build changes nothing in the game).
+            if (currentHalo1 || (!GetModuleHandleA("halo2.dll") && !haloap::H3Loaded())) haloap::ApplyForcedSkulls();
 
             tick++;
 
@@ -522,6 +525,7 @@ namespace
             {
                 // halo2.dll is noticed within one slice; the call is a GetModuleHandle compare except on change / every ~2 s
                 haloap::H2Tick(g_pipe);
+                haloap::H3Tick(g_pipe);
                 haloap::EffectsTick(g_pipe);
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }

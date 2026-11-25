@@ -422,6 +422,7 @@ static void TestTelemetry() {
         log.MissionLoad("b40", -1);  // unreadable: no field
         log.MissionLoad("c10", 2);
         log.H2("ev=start n=1 mode=1 map=2 diff=-");  // unreadable on a Halo 2 line: no field
+        log.H3("ev=start n=2 tid=9 kind=load ok=1 mode=1 camp=1 map=3010 diff=2 path=010_jungle");  // PLAN 8.H3.2
         std::string got = NormT(ReadAll(log.Path()));
         std::string want =
             "{\"ev\":\"session\",\"t\":N,\"gen\":0,\"build\":\"build1\",\"launcher\":\"0.1\"}\n"
@@ -449,7 +450,9 @@ static void TestTelemetry() {
             "{\"ev\":\"mission_load\",\"t\":N,\"gen\":4,\"mission\":\"b30\",\"difficulty\":7}\n"
             "{\"ev\":\"mission_load\",\"t\":N,\"gen\":5,\"mission\":\"b40\"}\n"
             "{\"ev\":\"mission_load\",\"t\":N,\"gen\":6,\"mission\":\"c10\",\"difficulty\":\"heroic\"}\n"
-            "{\"ev\":\"h2\",\"t\":N,\"gen\":6,\"msg\":\"ev=start n=1 mode=1 map=2 diff=-\"}\n";
+            "{\"ev\":\"h2\",\"t\":N,\"gen\":6,\"msg\":\"ev=start n=1 mode=1 map=2 diff=-\"}\n"
+            "{\"ev\":\"h3\",\"t\":N,\"gen\":6,\"msg\":\"ev=start n=2 tid=9 kind=load ok=1 mode=1 camp=1 map=3010 diff=2 path=010_jungle\","
+            "\"difficulty\":\"heroic\"}\n";
         CHECK(got == want);
         if (got != want) std::printf("got:\n%s\n", got.c_str());
     }

@@ -33,6 +33,8 @@ namespace haloap {
         // kH2MsgMax bytes at a character boundary and invalid UTF-8 becomes U+FFFD. Does not change `gen`.
         static constexpr size_t kH2MsgMax = 2048;
         void H2(const std::string& msg);
+        // Observe-only Halo 3 line (DLL message "H3: <text>"): {"ev":"h3",...,"msg":"<text>"}, same rules as H2 (PLAN 8.H3.2).
+        void H3(const std::string& msg);
 
         // Log-only Flood infection-form death (DLL message "SWARM: ..."): {"ev":"swarm",...}. No squad line, no effect
         // on anything else (PLAN 5.7).
@@ -47,6 +49,7 @@ namespace haloap {
 
     private:
         void Event(const AiEvent& e, const char* ev, const std::string& mission);
+        void ObserveLine(const char* ev, const std::string& msg);  // shared by H2() / H3()
         void WriteLine(const std::string& ev, const std::string& fieldsAfterT);  // fieldsAfterT: e.g. ,"mission":"a10"
         std::string m_dir;
         std::string m_build;

@@ -159,7 +159,10 @@ namespace haloap {
         }
     }
 
-    void TelemetryLog::H2(const std::string& msg) {
+    void TelemetryLog::H2(const std::string& msg) { ObserveLine("h2", msg); }
+    void TelemetryLog::H3(const std::string& msg) { ObserveLine("h3", msg); }
+
+    void TelemetryLog::ObserveLine(const char* ev, const std::string& msg) {
         std::string text;
         for (size_t i = 0; i < msg.size();) {
             size_t n = Utf8Len(msg, i);
@@ -170,7 +173,7 @@ namespace haloap {
         }
         const std::string diff = DifficultyField(ParseDiffToken(msg));  // same field as CE mission_load
         std::lock_guard<std::mutex> lock(m_mutex);
-        WriteLine("h2", ",\"msg\":" + JsonString(text) + diff);
+        WriteLine(ev, ",\"msg\":" + JsonString(text) + diff);
     }
 
     void TelemetryLog::Swarm(const std::string& mission, const SwarmEvent& e) {

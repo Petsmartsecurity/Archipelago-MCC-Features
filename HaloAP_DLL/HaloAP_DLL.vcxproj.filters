@@ -101,6 +101,15 @@
     <ClCompile Include="hooks\h2_observe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="hooks\h3_observe.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="hooks\h3_observe.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\h3_observe_logic.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
     <ClCompile Include="hooks\mission_complete.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
