@@ -68,6 +68,15 @@ namespace haloap {
             const fx::Action a = g_inflight.action;
             fx::Result r;
             const char* why = "";
+            if (NativeSlot().Peek() == fx::OpSlot::Idle) {
+                // QA item-effects-b M1: the slot was reset under us (hooks reinstalled, e.g. quit to the menu with an op in
+                // flight). Without this, g_inflight stays active forever and every later effect is held until MCC restarts.
+                // Held and retried; a good effect may repeat once (at least once), as with a lost post.
+                g_inflight.active = false;
+                printf("[effects] %d (%s): native slot was reset while in flight, retrying\n", a.id, fx::OpLabel(g_inflight.op));
+                g_queue.Failed(a, now);
+                return;
+            }
             if (NativeSlot().Take(&r, &why)) {
                 g_inflight.active = false;
                 switch (r) {
