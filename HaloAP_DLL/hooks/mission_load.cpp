@@ -138,20 +138,22 @@ namespace haloap {
             int missionIdx = GetMissionIndexFromPath(path);
             bool isLocked = (missionIdx >= 0 && !GetItemHandler().isMissionAllowed(missionIdx));
 
-            if (g_originalBeginMissionLoad)
-            {
-                g_originalBeginMissionLoad(p1, p2, path, p4, p5);
-            }
-
-            // Log the load itself, after the original so the game globals already hold this load's difficulty
-            // (R: confirm in game that a first load after changing difficulty reports the new value).
-            // " diff=<n>" is the difficulty, -1 = unreadable (PLAN 5.5).
+            // Log the load itself, before the original (as before PLAN 5.5). " diff=<n>" is this load's difficulty, -1 = unknown.
+            // It is p4, the requested difficulty: the original only stores it as pending (0x1b7b914) and the main frame copies
+            // it to globals+0x158 later, so reading the globals here (or right after the original) gives the PREVIOUS
+            // load's value (QA phase5.5 M1). The globals read stays only as a fallback for an out-of-range p4.
+            const int diff = (static_cast<uint16_t>(p4) < 4) ? static_cast<int>(static_cast<uint16_t>(p4)) : ReadDifficulty();
             char buf[1024];
             snprintf(buf, sizeof(buf),
-                "MISSION_LOAD: path='%s' diff=%d", path ? path : "(null)", ReadDifficulty());
+                "MISSION_LOAD: path='%s' diff=%d", path ? path : "(null)", diff);
             printf("[hook] %s\n", buf);
             if (g_pipe && g_pipe->IsConnected()) {
                 g_pipe->SendAsync(buf);
+            }
+
+            if (g_originalBeginMissionLoad)
+            {
+                g_originalBeginMissionLoad(p1, p2, path, p4, p5);
             }
 
             // ALWAYS call original.
