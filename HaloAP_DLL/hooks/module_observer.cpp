@@ -321,6 +321,7 @@ namespace obs {
             char names[160] = {};
             for (int i = 0; i < m_spec.hookCount; i++) {
                 if (m_on[i] && !intact[i]) {
+                    MH_ForgetHook(m_target[i]);  // QA observer-merge m1: drop MinHook's entry too, not only ours
                     m_on[i] = false;
                     m_addr[i] = nullptr;  // a later retry rescans it (and finds nothing while the foreign patch is there)
                     AppendName(names, sizeof(names), m_spec.patName[i]);

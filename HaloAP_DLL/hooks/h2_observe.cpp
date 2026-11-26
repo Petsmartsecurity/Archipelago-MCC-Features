@@ -7,8 +7,8 @@
 #include <cstdint>
 #include <cstring>
 
-// Verified against halo2.dll (build in data/build_fingerprint.json) by tools/h2/h2_symbols.py (gate: h2-symbols) and
-// tools/shared/check_mod_patterns.py (gate: hook-patterns). Evidence: docs/research/h2-base-hooks.md (QA corrections
+// Verified against halo2.dll (build in data/build_fingerprint.json) by tools/shared/check_hooks.py (gate: hook-symbols).
+// Evidence: docs/research/h2-base-hooks.md (QA corrections
 // at its top win), docs/research/h2-kill-path.md 5.4/10, docs/stage-reports/phase8-h2-7a-qa.md, phase8-h2-7b-qa.md.
 // Observe only: every detour reads, formats, queues a message and calls the original exactly once.
 namespace haloap {

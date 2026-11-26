@@ -7,8 +7,8 @@
 #include <cstdint>
 #include <cstring>
 
-// Verified against halo3.dll (build in data/build_fingerprint.json) by tests/test_h3_observe.py and
-// tools/shared/check_mod_patterns.py (gate: hook-patterns). Evidence: docs/research/h3-base-hooks.md, h3-kill-path.md,
+// Verified against halo3.dll (build in data/build_fingerprint.json) by tools/shared/check_hooks.py (gate: hook-symbols).
+// Evidence: docs/research/h3-base-hooks.md, h3-kill-path.md,
 // data/halo3/h3_base_hooks.json, docs/stage-reports/phase8-h3-1-base-hooks-qa.md.
 // Observe only: every detour reads, formats, queues a message and calls the original exactly once with the arguments it got.
 namespace haloap {
