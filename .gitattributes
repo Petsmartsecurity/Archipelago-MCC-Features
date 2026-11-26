@@ -66,3 +66,7 @@
 apworld/halo_mcc/data/halo2_location_data.py text eol=lf
 apworld/halo_mcc/data/halo_ce_kill_data.py text eol=lf
 HaloAP_launcher/Data/h2_map.h text eol=lf
+
+# vendored / generated: diffs and language stats skip them (review with: git diff upstream/master..HEAD -- . ":!*/thirdparty/*" ":!*ce_golden.json")
+HaloAP_launcher/thirdparty/** -diff linguist-vendored
+apworld/halo_mcc/test/ce_golden.json -diff linguist-generated

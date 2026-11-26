@@ -101,6 +101,17 @@ def snapshot(options, seed):
     }
 
 
+def golden_json(data):
+    """Same JSON as json.dumps(data, indent=1, sort_keys=True), but one case / data-package entry per line, so a
+    re-capture diffs by case. json.loads reads it unchanged."""
+    dump = lambda v: json.dumps(v, sort_keys=True)
+    rows = lambda d: ",\n".join(f"{dump(k)}: {dump(v)}" for k, v in sorted(d.items()))
+    dp = data["datapackage"]
+    return ('{\n"cases": {\n' + rows(data["cases"]) + '\n},\n"datapackage": {\n"items": {\n' + rows(dp["items"])
+            + '\n},\n"locations": {\n' + rows(dp["locations"]) + '\n}\n},\n"source_commit": '
+            + dump(data["source_commit"]) + '\n}\n')
+
+
 def capture():
     """Golden content. Only ever written with the pre-Halo 2 code checked out (fork commit 702b51e), or after an
     Archipelago upgrade with a commit whose CE output is already known to be right:
@@ -117,4 +128,4 @@ if __name__ == "__main__":
     import sys
     with contextlib.redirect_stdout(io.StringIO()):
         data = {"source_commit": sys.argv[1], **capture()}
-    pathlib.Path(sys.argv[2]).write_bytes((json.dumps(data, indent=1, sort_keys=True) + "\n").encode("utf-8"))
+    pathlib.Path(sys.argv[2]).write_bytes(golden_json(data).encode("utf-8"))
