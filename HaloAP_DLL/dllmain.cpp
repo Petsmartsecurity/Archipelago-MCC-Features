@@ -517,7 +517,11 @@ namespace
             // Not while Halo 2 is the loaded game: the skull mask is MCC-wide, its "in mission" guard is CE-only, and the
             // Halo 2 build changes nothing in the game (QA 8.H2.7b M1).
             // Same for Halo 3 (PLAN 8.H3.2: the observe build changes nothing in the game).
-            if (currentHalo1 || (!GetModuleHandleA("halo2.dll") && !haloap::H3Loaded())) haloap::ApplyForcedSkulls();
+            // Allow-list, not deny-list (ponytail audit 2026-11-26): only with CE loaded or no game loaded, so ODST / Reach / H4
+            // (which share the MCC-wide mask) are never written either.
+            if (currentHalo1 || (!GetModuleHandleA("halo2.dll") && !haloap::H3Loaded() && !GetModuleHandleA("halo3odst.dll") &&
+                                 !GetModuleHandleA("haloreach.dll") && !GetModuleHandleA("halo4.dll")))
+                haloap::ApplyForcedSkulls();
 
             tick++;
 
