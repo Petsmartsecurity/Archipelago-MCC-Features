@@ -10,6 +10,8 @@
 #include "compat.h"
 #include "pipe_server.h"
 #include <fstream>
+#include <sstream>
+#include "shared/observe_setting.h"
 
 namespace {
 	std::string GetConfigPath() {
@@ -19,16 +21,23 @@ namespace {
 		return s.substr(0, s.find_last_of('\\') + 1) + "haloap_config.txt";
 	}
 
-	std::string LoadSavedGameDir() {
-		std::ifstream f(GetConfigPath());
-		std::string dir;
-		if (f.is_open()) std::getline(f, dir);
-		return dir;
+	// haloap_config.txt: line 1 = MCC game root, further lines `key=value` (observe_logging=0, see shared/observe_setting.h).
+	std::string ReadConfigText() {
+		std::ifstream f(GetConfigPath(), std::ios::binary);
+		std::stringstream ss;
+		if (f.is_open()) ss << f.rdbuf();
+		return ss.str();
 	}
 
+	std::string LoadSavedGameDir() {
+		return haloap::ConfigGameDir(ReadConfigText());
+	}
+
+	// Keeps every setting line below the game directory.
 	void SaveGameDir(const std::string& dir) {
-		std::ofstream f(GetConfigPath());
-		if (f.is_open()) f << dir;
+		std::string text = haloap::ReplaceConfigGameDir(ReadConfigText(), dir);
+		std::ofstream f(GetConfigPath(), std::ios::binary);
+		if (f.is_open()) f << text;
 	}
 }
 
@@ -281,6 +290,12 @@ int main() {
 
 	std::cout << "DLL connected!\n";
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	{
+		// Halo 2 / Halo 3 observe logging: on unless haloap_config.txt says observe_logging=0 (sent before any Halo 2 / 3 session).
+		const bool observe = haloap::ParseObserveLogging(ReadConfigText());
+		std::cout << "Halo 2 / Halo 3 observe logging: " << (observe ? "on" : "off (observe_logging=0 in haloap_config.txt)") << "\n";
+		pipe.Send(haloap::ObserveMessage(observe));
+	}
 	apBridge.ReplayBufferedItems();
 
 	// 5. Monitor for MCC exit (pipe disconnect), then clean up.

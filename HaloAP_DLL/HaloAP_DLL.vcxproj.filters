@@ -104,6 +104,15 @@
     <ClCompile Include="hooks\h3_observe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="hooks\module_observer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="hooks\module_observer.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\module_observer_logic.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
     <ClInclude Include="hooks\h3_observe.h">
       <Filter>hooks</Filter>
     </ClInclude>

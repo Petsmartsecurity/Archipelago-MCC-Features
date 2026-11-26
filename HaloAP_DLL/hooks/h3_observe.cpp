@@ -1,7 +1,6 @@
 #include "h3_observe.h"
 #include "h3_observe_logic.h"
-#include "../minhook/MinHook.h"
-#include "../pattern_scan.h"
+#include "module_observer.h"
 #include <intrin.h>
 #include <atomic>
 #include <cstdio>
@@ -122,16 +121,7 @@ namespace haloap {
                                                  &kAiKillPattern };
 
         // ---- state ---------------------------------------------------------------------------------------------
-        // Originals and targets are NEVER nulled after uninstall: a game thread still inside a detour must reach the original.
-        std::atomic<void*> g_orig[kHookCount];
-        void* g_target[kHookCount] = {};
-        bool g_on[kHookCount] = {};
-
-        std::atomic<PipeClient*> g_pipe{ nullptr };
-        std::atomic<uint32_t> g_seq{ 0 };
-        std::atomic<uint32_t> g_dropped{ 0 };
-        std::atomic<uintptr_t> g_base{ 0 };
-        std::atomic<uintptr_t> g_size{ 0 };
+        // Anchors written by the worker thread (obs::ModuleObserver commits them before a hook is enabled), read by detours.
         std::atomic<uintptr_t> g_tlsVar{ 0 }, g_scnVar{ 0 };  // addresses of the game's _tls_index and scenario-tag pointer variables
         // absolute return addresses (0 = unknown)
         std::atomic<uintptr_t> g_loadRet{ 0 }, g_resetRet{ 0 }, g_queueRet{ 0 }, g_ckptRet{ 0 }, g_menuRet{ 0 },
@@ -141,57 +131,10 @@ namespace haloap {
         std::atomic<uint32_t> g_wonRep{ 0 };
         std::atomic<uint32_t> g_eraseCount{ 0 };
 
-        struct ModId {
-            uintptr_t base = 0;
-            uint32_t stamp = 0, size = 0;
-            bool operator==(const ModId& o) const { return base == o.base && stamp == o.stamp && size == o.size; }
-        };
-        // Worker-thread only:
-        HMODULE g_mod = nullptr;
-        ModId g_id;
-        int g_tickCount = 0;
-        bool g_pinFailPrinted = false;
-        const uint8_t* g_addr[P_COUNT] = {};
-        int g_hits[P_COUNT] = {};
-        int g_retryStage = 0;
-        ULONGLONG g_attachTick = 0;
+        // The shared lifecycle (module watch, scan, install, retries, integrity, reattach, uninstall, line numbering, send).
+        extern obs::ModuleObserver g_obs;
 
         // ---- SEH helpers: plain C functions, no objects with destructors ----------------------------------------
-        bool ReadIdentity(HMODULE h, ModId* id) {
-            if (!h) return false;
-            __try {
-                auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(h);
-                if (dos->e_magic != IMAGE_DOS_SIGNATURE) return false;
-                auto nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const uint8_t*>(h) + dos->e_lfanew);
-                if (nt->Signature != IMAGE_NT_SIGNATURE) return false;
-                id->base = reinterpret_cast<uintptr_t>(h);
-                id->stamp = nt->FileHeader.TimeDateStamp;
-                id->size = nt->OptionalHeader.SizeOfImage;
-                return true;
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                return false;
-            }
-        }
-
-        void CheckPrologues(bool* intact, int* enabled, int* intactCount) {
-            *enabled = 0;
-            *intactCount = 0;
-            for (int i = 0; i < kHookCount; i++) {
-                intact[i] = false;
-                if (!g_on[i]) continue;
-                (*enabled)++;
-                __try {
-                    uint8_t b = *static_cast<const uint8_t*>(g_target[i]);
-                    intact[i] = (b == 0xE9 || b == 0xEB);
-                }
-                __except (EXCEPTION_EXECUTE_HANDLER) {
-                    intact[i] = false;
-                }
-                if (intact[i]) (*intactCount)++;
-            }
-        }
-
         // The RIP-relative operand at fn+offset must carry the expected opcode; returns the address of the variable it refers to,
         // or 0 (fail closed) when the bytes differ or the target is outside the module image.
         uintptr_t ResolveRip(const uint8_t* fn, const RipOp& r, uintptr_t base, uintptr_t size) {
@@ -209,48 +152,10 @@ namespace haloap {
             }
         }
 
-        bool CallAtTargets(const uint8_t* site, const uint8_t* target) {
-            if (!site || !target) return false;
-            __try {
-                return h3::CallTargets(site, target);
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                return false;
-            }
-        }
-
         // fn+off is `E8 rel32` to `callee`: returns the return address (fn+off+5), else 0.
         uintptr_t VerifiedRet(const uint8_t* fn, size_t off, const uint8_t* callee) {
-            if (!fn || !callee || !CallAtTargets(fn + off, callee)) return 0;
+            if (!fn || !callee || !obs::CallAtTargets(fn + off, callee)) return 0;
             return reinterpret_cast<uintptr_t>(fn + off + kCallLen);
-        }
-
-        // All E8 rel32 call sites to `target` in the executable sections. Returns the count (may exceed cap).
-        size_t CallSitesInModule(HMODULE h, const uint8_t* target, const uint8_t** out, size_t cap) {
-            size_t total = 0;
-            __try {
-                auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(h);
-                auto base = reinterpret_cast<const uint8_t*>(h);
-                auto nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(base + dos->e_lfanew);
-                const IMAGE_SECTION_HEADER* sec = IMAGE_FIRST_SECTION(nt);
-                for (unsigned i = 0; i < nt->FileHeader.NumberOfSections; i++, sec++) {
-                    if (!(sec->Characteristics & IMAGE_SCN_MEM_EXECUTE)) continue;
-                    size_t va = sec->VirtualAddress;
-                    size_t size = sec->Misc.VirtualSize ? sec->Misc.VirtualSize : sec->SizeOfRawData;
-                    if (va >= nt->OptionalHeader.SizeOfImage) continue;
-                    if (size > nt->OptionalHeader.SizeOfImage - va) size = nt->OptionalHeader.SizeOfImage - va;
-                    const uint8_t* sites[8];
-                    size_t n = h3::FindCallSites(base + va, size, target, sites, 8);
-                    for (size_t k = 0; k < n && k < 8; k++) {
-                        if (total + k < cap) out[total + k] = sites[k];
-                    }
-                    total += n;
-                }
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                return 0;
-            }
-            return total;
         }
 
         // ---- reads done inside the detours (all under SEH; never writes) --------------------------------------------
@@ -363,35 +268,18 @@ namespace haloap {
         }
 
         // ---- message plumbing (a bounded snprintf and SendAsync, nothing else) -------------------------------------
-        h3::Msg NewMsg(const char* ev) {
-            return h3::Msg(ev, g_seq.fetch_add(1, std::memory_order_relaxed) + 1, GetCurrentThreadId());
-        }
+        obs::Msg NewMsg(const char* ev) { return g_obs.NewMsg(ev); }
+        void Send(obs::Msg& m) { g_obs.Send(m); }
+        void AddRet(obs::Msg& m, const char* key, uintptr_t addr) { g_obs.AddRet(m, key, addr); }
 
-        void Send(h3::Msg& m) {
-            PipeClient* p = g_pipe.load(std::memory_order_acquire);
-            if (!p || !p->IsConnected()) {
-                g_dropped.fetch_add(1, std::memory_order_relaxed);
-                return;
-            }
-            uint32_t d = g_dropped.exchange(0, std::memory_order_relaxed);
-            if (d) m.Add("drop=%u", d);
-            p->SendAsync(m.Finish());
-        }
-
-        void AddRet(h3::Msg& m, const char* key, uintptr_t addr) {
-            uintptr_t base = g_base.load(std::memory_order_relaxed), size = g_size.load(std::memory_order_relaxed);
-            if (base && addr >= base && addr < base + size) m.Add("%s=%llx", key, static_cast<unsigned long long>(addr - base));
-            else m.Add("%s=ext", key);
-        }
-
-        void AddScenario(h3::Msg& m) {
+        void AddScenario(obs::Msg& m) {
             int c, id;
             if (ReadScenario(&c, &id)) m.Add("scn=%d/%d", c, id);
             else m.Add("scn=-");
         }
 
         template <class Fn>
-        Fn Orig(int idx) { return reinterpret_cast<Fn>(g_orig[idx].load(std::memory_order_acquire)); }
+        Fn Orig(int idx) { return reinterpret_cast<Fn>(g_obs.Orig(idx)); }
 
         // ---- detours -------------------------------------------------------------------------------------------
         typedef bool (*StartFn)(void*);
@@ -413,7 +301,7 @@ namespace haloap {
             if (kind != h3::StartKind::Other) g_eraseCount.store(0, std::memory_order_relaxed);
             GInfo g;
             ReadGlobals(&g);
-            h3::Msg m = NewMsg("start");
+            obs::Msg m = NewMsg("start");
             m.Add("kind=%s ok=%d", h3::StartKindName(kind), r ? 1 : 0);
             AddRet(m, "ret", ret);
             if (s.ok) m.Add("mode=%d camp=%d map=%d diff=%d zs=%d ins=%d", s.mode, s.camp, s.map, s.diff, s.zs, s.ins);
@@ -432,7 +320,7 @@ namespace haloap {
             ReadStart(static_cast<const uint8_t*>(opts), &s);
             h3::ChangeSrc src = h3::ClassifyChangeSrc(ret, g_queueRet.load(std::memory_order_relaxed),
                                                       g_ckptRet.load(std::memory_order_relaxed), g_menuRet.load(std::memory_order_relaxed));
-            h3::Msg m = NewMsg("change");
+            obs::Msg m = NewMsg("change");
             m.Add("src=%s", h3::ChangeSrcName(src));
             AddRet(m, "ret", ret);
             if (!opts) m.Add("null=1 quit=1");
@@ -448,7 +336,7 @@ namespace haloap {
         void SendSignal(const char* ev, uintptr_t ret) {
             GInfo g;
             ReadGlobals(&g);
-            h3::Msg m = NewMsg(ev);
+            obs::Msg m = NewMsg(ev);
             AddRet(m, "ret", ret);
             m.Add("gdiff=%d gmode=%d", g.ok ? g.diff : -1, g.ok ? g.mode : -1);
             AddScenario(m);
@@ -477,7 +365,7 @@ namespace haloap {
             if (d.first) g_wonRep.store(0, std::memory_order_relaxed);
             else g_wonRep.fetch_add(1, std::memory_order_relaxed);
             if (!d.log) return;
-            h3::Msg m = NewMsg("won");
+            obs::Msg m = NewMsg("won");
             m.Add("first=%d was=%d", d.first ? 1 : 0, was);
             if (!d.first) m.Add("rep=%u", rep + 1);
             m.Add("mode=%d gdiff=%d", g.ok ? g.mode : -1, g.ok ? g.diff : -1);
@@ -487,7 +375,7 @@ namespace haloap {
         }
 
         void DetourTitle(uint16_t idx, float dur) {
-            h3::Msg m = NewMsg("title");
+            obs::Msg m = NewMsg("title");
             m.Add("idx=%u dur=%.2f", static_cast<unsigned>(idx), static_cast<double>(dur));
             AddScenario(m);
             Send(m);
@@ -495,7 +383,7 @@ namespace haloap {
         }
 
         void SendShell(int msg, uintptr_t ret, uint32_t rep, bool flush) {
-            h3::Msg m = NewMsg("shell");
+            obs::Msg m = NewMsg("shell");
             m.Add("msg=%d", msg);
             if (ret) AddRet(m, "ret", ret);
             if (rep) m.Add("rep=%u", rep);
@@ -524,7 +412,7 @@ namespace haloap {
             Orig<ShellFn>(P_SHELL)(engine, msg, ctx);
         }
 
-        void AddActor(h3::Msg& m, uint32_t handle, const ActorInfo& a) {
+        void AddActor(obs::Msg& m, uint32_t handle, const ActorInfo& a) {
             m.Add("ah=%x", handle);
             if (a.ok) {
                 m.Add("unit=%x sq=%x ch=%x sub=%x st=%d/%d%s", a.unit, a.squad, a.ch, a.suba, a.state, a.sub, a.saltOk ? "" : " salt=bad");
@@ -541,7 +429,7 @@ namespace haloap {
             ReadGlobals(&g);
             Orig<DiedFn>(P_DIED)(handle);
             h3::DeathKind kind = h3::ClassifyDeath(ret, g_killRet.load(std::memory_order_relaxed), g_aiKillRet.load(std::memory_order_relaxed));
-            h3::Msg m = NewMsg("died");
+            obs::Msg m = NewMsg("died");
             m.Add("kind=%s", h3::DeathKindName(kind));
             AddRet(m, "src", ret);
             AddActor(m, handle, a);
@@ -560,7 +448,7 @@ namespace haloap {
             ActorInfo a;
             ReadActor(handle, &a);  // before: the original frees the actor
             const uint64_t r = Orig<DeleteFn>(P_DELETE)(a1, a2, a3, a4);
-            h3::Msg m = NewMsg("erase");
+            obs::Msg m = NewMsg("erase");
             AddRet(m, "src", ret);
             AddActor(m, handle, a);
             m.Add("cnt=%u", count);
@@ -574,296 +462,84 @@ namespace haloap {
                                              reinterpret_cast<void*>(DetourShell), reinterpret_cast<void*>(DetourDied),
                                              reinterpret_cast<void*>(DetourDelete) };
 
-        // ---- install / uninstall (worker thread only) ----------------------------------------------------------
-        // Holds a loader reference on halo3.dll for the scope; used ONLY around MinHook create/enable/remove (MinHook reads and
-        // patches without SEH). Scans and prints run unpinned under SEH.
-        struct Pin {
-            HMODULE h = nullptr;
-            bool Acquire(HMODULE expect) {
-                if (!GetModuleHandleExA(0, "halo3.dll", &h) || h != expect) {
-                    Release();
-                    return false;
-                }
-                return true;
-            }
-            void Release() {
-                if (h) { FreeLibrary(h); h = nullptr; }
-            }
-            ~Pin() { Release(); }
-        };
-
-        constexpr int kStaleBuild = 1000;  // CreateAndEnable status: stale MinHook entry from a different build
-        constexpr int kNotAttempted = -1000;
-
-        // No printing here (pinned). Returns MH_OK (0) or the failing MH status / kStaleBuild.
-        int CreateAndEnable(int idx, void* target, bool sameBuild) {
-            void* orig = nullptr;
-            MH_STATUS s = MH_CreateHook(target, kDetours[idx], &orig);
-            if (s == MH_ERROR_ALREADY_CREATED) {
-                if (!sameBuild) return kStaleBuild;
-                MH_RemoveHook(target);
-                s = MH_CreateHook(target, kDetours[idx], &orig);
-            }
-            if (s != MH_OK) return static_cast<int>(s);
-            g_orig[idx].store(orig, std::memory_order_release);  // before the jump exists
-            s = MH_EnableHook(target);
-            if (s != MH_OK) {
-                MH_RemoveHook(target);
-                return static_cast<int>(s);
-            }
-            return MH_OK;
-        }
-
-        void AppendName(char* list, size_t cap, const char* s) {
-            size_t n = strlen(list);
-            if (n + 1 >= cap) return;
-            snprintf(list + n, cap - n, "%s%s", n ? "," : "", s);
-        }
-
-        void ForgetModule() {
-            for (int i = 0; i < kHookCount; i++) g_on[i] = false;  // g_orig / g_target stay valid on purpose
-            for (int i = 0; i < P_COUNT; i++) { g_addr[i] = nullptr; g_hits[i] = 0; }
-            g_tlsVar = 0; g_scnVar = 0;
-            g_loadRet = 0; g_resetRet = 0; g_queueRet = 0; g_ckptRet = 0; g_menuRet = 0; g_killRet = 0; g_aiKillRet = 0;
-            g_retryStage = 0;
-            g_mod = nullptr;
-        }
-
+        // ---- anchors and the observer description (worker thread only) -------------------------------------------
+        // Derived anchors are computed into a pending copy (seeded from the published ones) and published by Commit,
+        // pinned and before any jump exists.
         struct Derived {
             uintptr_t tlsVar = 0, scnVar = 0, loadRet = 0, resetRet = 0, queueRet = 0, ckptRet = 0, menuRet = 0, killRet = 0, aiKillRet = 0;
         };
 
         // Fills only the fields that are still 0, from the resolved signature addresses (installed targets included: every
         // anchor sits beyond the 5 patched bytes, or in an unhooked function). Everything under SEH; nothing is committed here.
-        void ComputeDerived(HMODULE h, const ModId& id, Derived* d, char* notes, size_t noteCap) {
-            if (!d->tlsVar) d->tlsVar = ResolveRip(g_addr[P_DIFF], kTlsIndexOp, id.base, id.size);
-            if (!d->scnVar) d->scnVar = ResolveRip(g_addr[P_START], kScnPtrOp, id.base, id.size);
-            if (!d->killRet) d->killRet = VerifiedRet(g_addr[P_UNIT_DIE], kDiedFromUnitDieCall, g_addr[P_DIED]);
-            if (!d->aiKillRet) d->aiKillRet = VerifiedRet(g_addr[P_AI_KILL], kDiedFromAiKillCall, g_addr[P_DIED]);
-            if (!d->queueRet) d->queueRet = VerifiedRet(g_addr[P_UPDATE], kChangeFromUpdateCall, g_addr[P_CHANGE]);
-            if (!d->ckptRet) d->ckptRet = VerifiedRet(g_addr[P_CKPT], kChangeFromCkptCall, g_addr[P_CHANGE]);
-            if (!d->menuRet) d->menuRet = VerifiedRet(g_addr[P_MENU], kChangeFromMenuCall, g_addr[P_CHANGE]);
+        void ComputeDerived(HMODULE h, const obs::ModId& id, const uint8_t* const* a, Derived* d, char* notes, size_t noteCap) {
+            if (!d->tlsVar) d->tlsVar = ResolveRip(a[P_DIFF], kTlsIndexOp, id.base, id.size);
+            if (!d->scnVar) d->scnVar = ResolveRip(a[P_START], kScnPtrOp, id.base, id.size);
+            if (!d->killRet) d->killRet = VerifiedRet(a[P_UNIT_DIE], kDiedFromUnitDieCall, a[P_DIED]);
+            if (!d->aiKillRet) d->aiKillRet = VerifiedRet(a[P_AI_KILL], kDiedFromAiKillCall, a[P_DIED]);
+            if (!d->queueRet) d->queueRet = VerifiedRet(a[P_UPDATE], kChangeFromUpdateCall, a[P_CHANGE]);
+            if (!d->ckptRet) d->ckptRet = VerifiedRet(a[P_CKPT], kChangeFromCkptCall, a[P_CHANGE]);
+            if (!d->menuRet) d->menuRet = VerifiedRet(a[P_MENU], kChangeFromMenuCall, a[P_CHANGE]);
             // main_game_start has exactly two direct callers: change_immediate (load) and reset_map (reset), both at the stated offsets.
-            if (!d->loadRet && g_addr[P_CHANGE] && g_addr[P_RESET_MAP] && g_addr[P_START]) {
+            if (!d->loadRet && a[P_CHANGE] && a[P_RESET_MAP] && a[P_START]) {
                 const uint8_t* sites[4] = {};
-                size_t n = CallSitesInModule(h, g_addr[P_START], sites, 4);
-                uintptr_t l = VerifiedRet(g_addr[P_CHANGE], kStartFromChangeCall, g_addr[P_START]);
-                uintptr_t r = VerifiedRet(g_addr[P_RESET_MAP], kStartFromResetCall, g_addr[P_START]);
+                size_t n = obs::CallSitesInModule(h, a[P_START], sites, 4);
+                uintptr_t l = VerifiedRet(a[P_CHANGE], kStartFromChangeCall, a[P_START]);
+                uintptr_t r = VerifiedRet(a[P_RESET_MAP], kStartFromResetCall, a[P_START]);
                 if (n == kStartCallSites && l && r) { d->loadRet = l; d->resetRet = r; }
                 else snprintf(notes + strlen(notes), noteCap - strlen(notes), "main_game_start has %zu direct callers (expected %zu) or the call offsets differ: starts not classified. ", n, kStartCallSites);
             }
         }
 
-        bool Incomplete() {
-            for (int i = 0; i < kHookCount; i++) if (!g_on[i]) return true;
-            return !g_tlsVar.load() || !g_scnVar.load() || !g_loadRet.load() || !g_resetRet.load() || !g_queueRet.load() ||
-                   !g_ckptRet.load() || !g_menuRet.load() || !g_killRet.load() || !g_aiKillRet.load();
+        Derived g_pending;
+
+        void Derive(const obs::DeriveCtx& c) {
+            Derived& d = g_pending;
+            d.tlsVar = g_tlsVar; d.scnVar = g_scnVar; d.loadRet = g_loadRet; d.resetRet = g_resetRet; d.queueRet = g_queueRet;
+            d.ckptRet = g_ckptRet; d.menuRet = g_menuRet; d.killRet = g_killRet; d.aiKillRet = g_aiKillRet;
+            ComputeDerived(c.h, c.id, c.addr, &d, c.notes, c.noteCap);
         }
 
-        void Commit(const Derived& d) {
+        void Commit() {
+            const Derived& d = g_pending;
             g_tlsVar = d.tlsVar; g_scnVar = d.scnVar; g_loadRet = d.loadRet; g_resetRet = d.resetRet; g_queueRet = d.queueRet;
             g_ckptRet = d.ckptRet; g_menuRet = d.menuRet; g_killRet = d.killRet; g_aiKillRet = d.aiKillRet;
         }
 
-        // One scan/install pass. pass 0 = fresh attach; pass 1/2 = retry of what is still missing. Never rescans a signature that
-        // is already resolved. Returns false if the pass could not run (module vanished or changed under it).
-        bool Pass(HMODULE h, int pass) {
-            ModId id;
-            if (!ReadIdentity(h, &id)) return false;
-            const ModId prev = g_id;
-            if (pass == 0) {
-                for (int i = 0; i < P_COUNT; i++) { g_addr[i] = nullptr; g_hits[i] = 0; }
-            } else if (!(id == g_id)) {
-                return false;
-            }
-            const auto base = reinterpret_cast<const uint8_t*>(h);
-            char notes[320] = {};
+        void ClearAnchors() {
+            g_tlsVar = 0; g_scnVar = 0;
+            g_loadRet = 0; g_resetRet = 0; g_queueRet = 0; g_ckptRet = 0; g_menuRet = 0; g_killRet = 0; g_aiKillRet = 0;
+        }
 
-            // 1. scan, unpinned (SEH inside FindUniquePatternInModule)
-            for (int i = 0; i < P_COUNT; i++) {
-                if (g_addr[i]) continue;
-                g_addr[i] = static_cast<const uint8_t*>(FindUniquePatternInModule(h, *kPatText[i], &g_hits[i]));
-                if (!g_addr[i]) printf("[h3] signature %s: %s\n", kPatName[i], g_hits[i] ? "ambiguous (2+ matches)" : "not found");
-            }
-            Derived d;
-            d.tlsVar = g_tlsVar; d.scnVar = g_scnVar; d.loadRet = g_loadRet; d.resetRet = g_resetRet; d.queueRet = g_queueRet;
-            d.ckptRet = g_ckptRet; d.menuRet = g_menuRet; d.killRet = g_killRet; d.aiKillRet = g_aiKillRet;
-            ComputeDerived(h, id, &d, notes, sizeof(notes));
+        bool AnchorsMissing() {
+            return !g_tlsVar.load() || !g_scnVar.load() || !g_loadRet.load() || !g_resetRet.load() || !g_queueRet.load() ||
+                   !g_ckptRet.load() || !g_menuRet.load() || !g_killRet.load() || !g_aiKillRet.load();
+        }
 
-            // 2. the module must still be the one we read: nothing found above is used otherwise
-            ModId again;
-            if (GetModuleHandleA("halo3.dll") != h || !ReadIdentity(h, &again) || !(again == id)) {
-                if (!g_pinFailPrinted) printf("[h3] halo3.dll changed while scanning; will retry\n");
-                g_pinFailPrinted = true;
-                if (pass == 0) { for (int i = 0; i < P_COUNT; i++) g_addr[i] = nullptr; }
-                return false;
-            }
-            g_pinFailPrinted = false;
-            const bool sameBuild = pass != 0 || (prev.stamp == id.stamp && prev.size == id.size);
-            if (pass == 0) {
-                g_id = id;
-                g_mod = h;
-                g_base = id.base;
-                g_size = id.size;
-                g_attachTick = GetTickCount64();
-                g_retryStage = 0;
-                h3::Msg att = NewMsg("attach");
-                att.Add("base=%llx stamp=%x size=%x", static_cast<unsigned long long>(id.base), id.stamp, id.size);
-                Send(att);
-                printf("[h3] halo3.dll at %p (stamp %08x, size %x)\n", h, id.stamp, id.size);
-            }
-            if (notes[0]) printf("[h3] %s\n", notes);
-
-            // 3. pin only around MinHook create+enable, re-check identity inside the pin, no printing while pinned
-            int status[kHookCount];
-            bool pinned = false, need = false;
-            for (int i = 0; i < kHookCount; i++) {
-                status[i] = kNotAttempted;
-                if (!g_on[i] && g_addr[i]) need = true;
-            }
-            if (need) {
-                Pin pin;
-                ModId inPin;
-                pinned = pin.Acquire(h) && ReadIdentity(h, &inPin) && inPin == id;
-                if (pinned) {
-                    Commit(d);  // before any jump exists
-                    for (int i = 0; i < kHookCount; i++) {
-                        if (g_on[i] || !g_addr[i]) continue;
-                        void* target = const_cast<uint8_t*>(g_addr[i]);
-                        g_target[i] = target;
-                        status[i] = CreateAndEnable(i, target, sameBuild);
-                        if (status[i] == MH_OK) g_on[i] = true;
-                    }
-                }
-            } else {
-                Commit(d);
-                pinned = true;
-            }
-            if (!pinned) {
-                printf("[h3] could not pin halo3.dll or it changed; will retry\n");
-                return false;
-            }
-
-            // 4. report (unpinned)
-            char on[200] = {}, off[240] = {};
-            for (int i = 0; i < kHookCount; i++) {
-                if (g_on[i]) {
-                    AppendName(on, sizeof(on), kPatName[i]);
-                    if (status[i] == MH_OK)
-                        printf("[h3] hook %s installed at RVA %llx\n", kPatName[i], static_cast<unsigned long long>(g_addr[i] - base));
-                    continue;
-                }
-                char entry[48];
-                if (!g_addr[i]) snprintf(entry, sizeof(entry), "%s:%s", kPatName[i], g_hits[i] ? "ambig" : "none");
-                else snprintf(entry, sizeof(entry), "%s:hookfail", kPatName[i]);
-                AppendName(off, sizeof(off), entry);
-                if (status[i] == kStaleBuild) printf("[h3] %s: stale MinHook entry from a different build, hook off\n", kPatName[i]);
-                else if (status[i] != kNotAttempted) printf("[h3] %s: MinHook failed: %d (%s)\n", kPatName[i], status[i], MH_StatusToString(static_cast<MH_STATUS>(status[i])));
-            }
+        void Report() {
             if (!g_tlsVar.load()) printf("[h3] _tls_index not resolved: no game-globals / actor reads (gdiff=-, unit=-)\n");
             if (!g_loadRet.load()) printf("[h3] main_game_start callers not verified: starts are reported as kind=other\n");
             if (!g_killRet.load()) printf("[h3] unit_die -> actor_died link not verified: deaths are reported as kind=unknown\n");
+        }
 
-            h3::Msg ins = NewMsg("install");
-            ins.Add("pass=%d on=%s off=%s", pass, on[0] ? on : "-", off[0] ? off : "-");
+        void InstallFields(obs::Msg& ins) {
             ins.Add("tls=%d scn=%d load=%d reset=%d queue=%d ckpt=%d menu=%d kill=%d aikill=%d", g_tlsVar.load() ? 1 : 0,
                     g_scnVar.load() ? 1 : 0, g_loadRet.load() ? 1 : 0, g_resetRet.load() ? 1 : 0, g_queueRet.load() ? 1 : 0,
                     g_ckptRet.load() ? 1 : 0, g_menuRet.load() ? 1 : 0, g_killRet.load() ? 1 : 0, g_aiKillRet.load() ? 1 : 0);
-            Send(ins);
-            return true;
         }
 
-        void Attach(HMODULE h) {
-            if (!Pass(h, 0)) g_mod = nullptr;  // retried on the next 100 ms slice
-        }
-
-        void CheckIntegrity() {
-            ModId id;
-            const bool changed = !ReadIdentity(g_mod, &id) || !(id == g_id);
-            bool intact[kHookCount];
-            int enabled, intactCount;
-            CheckPrologues(intact, &enabled, &intactCount);
-            switch (h3::DecideReattach(changed, enabled, intactCount)) {
-            case h3::Reattach::None:
-                return;
-            case h3::Reattach::DropChanged: {
-                char names[160] = {};
-                for (int i = 0; i < kHookCount; i++) {
-                    if (g_on[i] && !intact[i]) {
-                        g_on[i] = false;
-                        g_addr[i] = nullptr;
-                        AppendName(names, sizeof(names), kPatName[i]);
-                    }
-                }
-                printf("[h3] prologue of %s changed by something else: those hooks dropped, the rest kept\n", names);
-                h3::Msg m = NewMsg("hookdrop");
-                m.Add("dropped=%s", names);
-                Send(m);
-                return;
-            }
-            case h3::Reattach::Full:
-                break;
-            }
-            printf("[h3] halo3.dll identity changed or every hook prologue is gone: re-attaching\n");
-            HMODULE h = g_mod;
-            ForgetModule();
-            h3::Msg m = NewMsg("reattach");
-            Send(m);
-            Attach(h);
-        }
+        const obs::ObserverSpec kSpec = { h3::kTag, "h3", "halo3.dll", P_COUNT, kHookCount, kPatName, kPatText, kDetours,
+                                          nullptr, Derive, Commit, ClearAnchors, AnchorsMissing, Report, InstallFields };
+        obs::ModuleObserver g_obs(kSpec);
     }  // namespace
 
     bool H3Loaded() { return GetModuleHandleA("halo3.dll") != nullptr; }
 
     void H3Tick(PipeClient* pipe) {
-        g_pipe.store(pipe, std::memory_order_release);
-        HMODULE cur = GetModuleHandleA("halo3.dll");  // no refcount: a compare only
-        if (cur != g_mod) {
-            if (g_mod) {
-                printf("[h3] halo3.dll %s\n", cur ? "replaced" : "unloaded");
-                // Hooks of the old image: when it is gone MinHook cannot restore it (unmapped); when it was replaced in place
-                // the identity check in Uninstall keeps us from touching a foreign image.
-                UninstallH3Observe();
-                g_pipe.store(pipe, std::memory_order_release);
-                ForgetModule();
-                g_base = 0;
-                h3::Msg m = NewMsg(cur ? "replaced" : "unload");
-                Send(m);
-            }
-            g_tickCount = 0;
-            if (cur) Attach(cur);
-            return;
-        }
-        if (!cur) return;
-        if (++g_tickCount >= 20) {  // ~2 s
-            g_tickCount = 0;
-            CheckIntegrity();
-            if (!g_mod) return;
-        }
-        // Bounded retries of whatever is still missing (the loader may still have been working at attach time)
-        if (g_retryStage < 2) {
-            ULONGLONG elapsed = GetTickCount64() - g_attachTick;
-            if (elapsed >= (g_retryStage == 0 ? 2000ULL : 10000ULL)) {
-                g_retryStage++;
-                if (Incomplete()) Pass(g_mod, g_retryStage);
-            }
-        }
+        g_obs.Tick(pipe, GetModuleHandleA("halo3.dll"));  // no refcount: a compare only
     }
 
     void UninstallH3Observe() {
-        if (g_mod) {
-            Pin pin;
-            ModId id;
-            // Only touch memory when this is still the module we hooked.
-            if (pin.Acquire(g_mod) && ReadIdentity(g_mod, &id) && id == g_id) {
-                for (int i = kHookCount - 1; i >= 0; i--) {
-                    if (g_on[i]) MH_RemoveHook(g_target[i]);  // disables first; the entry stays if it fails
-                }
-            }
-            for (int i = 0; i < kHookCount; i++) g_on[i] = false;
-            g_mod = nullptr;
-        }
-        g_pipe.store(nullptr, std::memory_order_release);  // detours copy the pointer once per message
+        g_obs.Uninstall();
     }
 
 }  // namespace haloap

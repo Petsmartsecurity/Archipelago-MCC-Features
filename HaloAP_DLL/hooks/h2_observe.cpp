@@ -1,7 +1,6 @@
 #include "h2_observe.h"
 #include "h2_observe_logic.h"
-#include "../minhook/MinHook.h"
-#include "../pattern_scan.h"
+#include "module_observer.h"
 #include <intrin.h>
 #include <atomic>
 #include <cstdio>
@@ -122,17 +121,7 @@ namespace haloap {
                                                  &kSkullQueryPattern };
 
         // ---- state ---------------------------------------------------------------------------------------------
-        // Written by the worker thread before a hook is enabled, read by detours. Originals and targets are NEVER
-        // nulled after uninstall: a game thread still inside a detour must always reach the original (QA m1).
-        std::atomic<void*> g_orig[kHookCount];
-        void* g_target[kHookCount] = {};
-        bool g_on[kHookCount] = {};
-
-        std::atomic<PipeClient*> g_pipe{ nullptr };
-        std::atomic<uint32_t> g_seq{ 0 };
-        std::atomic<uint32_t> g_dropped{ 0 };
-        std::atomic<uintptr_t> g_base{ 0 };
-        std::atomic<uintptr_t> g_size{ 0 };
+        // Anchors written by the worker thread (obs::ModuleObserver commits them before a hook is enabled), read by detours.
         // addresses of the game's pointer variables (header, game globals, actor array, time globals)
         std::atomic<uintptr_t> g_hdrVar{ 0 }, g_gVar{ 0 }, g_actVar{ 0 }, g_tickVar{ 0 };
         std::atomic<uintptr_t> g_loadRet{ 0 }, g_resetRet{ 0 }, g_killRet{ 0 };  // absolute return addresses (0 = unknown)
@@ -142,58 +131,10 @@ namespace haloap {
         std::atomic<int32_t> g_lastShell{ INT32_MIN };
         std::atomic<uint32_t> g_shellRep{ 0 };
 
-        struct ModId {
-            uintptr_t base = 0;
-            uint32_t stamp = 0, size = 0;
-            bool operator==(const ModId& o) const { return base == o.base && stamp == o.stamp && size == o.size; }
-        };
-        // Worker-thread only:
-        HMODULE g_mod = nullptr;     // module we attached to (identity below); nullptr = not attached
-        ModId g_id;                  // identity at the last attach
-        int g_tickCount = 0;
-        bool g_pinFailPrinted = false;
-        const uint8_t* g_addr[P_COUNT] = {};  // resolved signature addresses (null = not resolved)
-        int g_hits[P_COUNT] = {};
-        int g_retryStage = 0;                 // 0: none yet, 1: ~2 s retry done, 2: ~10 s retry done
-        ULONGLONG g_attachTick = 0;
+        // The shared lifecycle (module watch, scan, install, retries, integrity, reattach, uninstall, line numbering, send).
+        extern obs::ModuleObserver g_obs;
 
         // ---- SEH helpers: plain C functions, no objects with destructors ---------------------------------------
-        bool ReadIdentity(HMODULE h, ModId* id) {
-            if (!h) return false;
-            __try {
-                auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(h);
-                if (dos->e_magic != IMAGE_DOS_SIGNATURE) return false;
-                auto nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const uint8_t*>(h) + dos->e_lfanew);
-                if (nt->Signature != IMAGE_NT_SIGNATURE) return false;
-                id->base = reinterpret_cast<uintptr_t>(h);
-                id->stamp = nt->FileHeader.TimeDateStamp;
-                id->size = nt->OptionalHeader.SizeOfImage;
-                return true;
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                return false;
-            }
-        }
-
-        // Which enabled hooks still start with MinHook's jump (E9; EB when it patched above a short function).
-        void CheckPrologues(bool* intact, int* enabled, int* intactCount) {
-            *enabled = 0;
-            *intactCount = 0;
-            for (int i = 0; i < kHookCount; i++) {
-                intact[i] = false;
-                if (!g_on[i]) continue;
-                (*enabled)++;
-                __try {
-                    uint8_t b = *static_cast<const uint8_t*>(g_target[i]);
-                    intact[i] = (b == 0xE9 || b == 0xEB);
-                }
-                __except (EXCEPTION_EXECUTE_HANDLER) {
-                    intact[i] = false;
-                }
-                if (intact[i]) (*intactCount)++;
-            }
-        }
-
         // The RIP-relative load at fn+off must carry the expected opcode; returns the address of the variable it
         // reads, or 0 (fail closed) when the bytes differ or the target is outside the module image.
         uintptr_t ResolveRip(const uint8_t* fn, const RipLoad& load, uintptr_t base, uintptr_t size) {
@@ -208,16 +149,6 @@ namespace haloap {
             }
             __except (EXCEPTION_EXECUTE_HANDLER) {
                 return 0;
-            }
-        }
-
-        bool CallAtTargets(const uint8_t* site, const uint8_t* target) {
-            if (!site || !target) return false;
-            __try {
-                return h2::CallTargets(site, target);
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                return false;
             }
         }
 
@@ -238,34 +169,6 @@ namespace haloap {
                 return 0;
             }
             return ResolveRip(fn, kTimeFromGameTime, base, size);
-        }
-
-        // All E8 rel32 call sites to `target` in the executable sections. Returns the count (may exceed cap).
-        size_t CallSitesInModule(HMODULE h, const uint8_t* target, const uint8_t** out, size_t cap) {
-            size_t total = 0;
-            __try {
-                auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(h);
-                auto base = reinterpret_cast<const uint8_t*>(h);
-                auto nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(base + dos->e_lfanew);
-                const IMAGE_SECTION_HEADER* sec = IMAGE_FIRST_SECTION(nt);
-                for (unsigned i = 0; i < nt->FileHeader.NumberOfSections; i++, sec++) {
-                    if (!(sec->Characteristics & IMAGE_SCN_MEM_EXECUTE)) continue;
-                    size_t va = sec->VirtualAddress;
-                    size_t size = sec->Misc.VirtualSize ? sec->Misc.VirtualSize : sec->SizeOfRawData;
-                    if (va >= nt->OptionalHeader.SizeOfImage) continue;
-                    if (size > nt->OptionalHeader.SizeOfImage - va) size = nt->OptionalHeader.SizeOfImage - va;
-                    const uint8_t* sites[8];
-                    size_t n = h2::FindCallSites(base + va, size, target, sites, 8);
-                    for (size_t k = 0; k < n && k < 8; k++) {
-                        if (total + k < cap) out[total + k] = sites[k];
-                    }
-                    total += n;
-                }
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                return 0;
-            }
-            return total;
         }
 
         // ---- reads done inside the detours (all under SEH) -------------------------------------------------------
@@ -417,39 +320,18 @@ namespace haloap {
         }
 
         // ---- message plumbing (game threads: a bounded snprintf and SendAsync, nothing else) --------------------
-        h2::Msg NewMsg(const char* ev) {
-            h2::Msg m(ev, g_seq.fetch_add(1, std::memory_order_relaxed) + 1, GetCurrentThreadId());
-            int tick;
-            if (ReadTick(&tick)) m.Add("tick=%d", tick);
-            else m.Add("tick=-");
-            return m;
-        }
+        obs::Msg NewMsg(const char* ev) { return g_obs.NewMsg(ev); }
+        void Send(obs::Msg& m) { g_obs.Send(m); }
+        void AddRet(obs::Msg& m, const char* key, uintptr_t addr) { g_obs.AddRet(m, key, addr); }
 
-        void Send(h2::Msg& m) {
-            PipeClient* p = g_pipe.load(std::memory_order_acquire);
-            if (!p || !p->IsConnected()) {
-                g_dropped.fetch_add(1, std::memory_order_relaxed);
-                return;
-            }
-            uint32_t d = g_dropped.exchange(0, std::memory_order_relaxed);
-            if (d) m.Add("drop=%u", d);
-            p->SendAsync(m.Finish());
-        }
-
-        void AddRet(h2::Msg& m, const char* key, uintptr_t addr) {
-            uintptr_t base = g_base.load(std::memory_order_relaxed), size = g_size.load(std::memory_order_relaxed);
-            if (base && addr >= base && addr < base + size) m.Add("%s=%llx", key, static_cast<unsigned long long>(addr - base));
-            else m.Add("%s=ext", key);
-        }
-
-        void AddCode(h2::Msg& m) {
+        void AddCode(obs::Msg& m) {
             char code[32];
             CodeState cs = ReadCode(code);
             m.Add("code=%s", cs == CODE_OK ? code : cs == CODE_BAD ? "?" : "-");
         }
 
         template <class Fn>
-        Fn Orig(int idx) { return reinterpret_cast<Fn>(g_orig[idx].load(std::memory_order_acquire)); }
+        Fn Orig(int idx) { return reinterpret_cast<Fn>(g_obs.Orig(idx)); }
 
         // ---- detours -------------------------------------------------------------------------------------------
         typedef void (*GameStartFn)(void*);
@@ -469,7 +351,7 @@ namespace haloap {
             ReadStart(static_cast<const uint8_t*>(opts), &s);
             h2::StartKind kind = h2::ClassifyStart(ret, g_loadRet.load(std::memory_order_relaxed),
                                                    g_resetRet.load(std::memory_order_relaxed));
-            h2::Msg m = NewMsg("game_start");
+            obs::Msg m = NewMsg("game_start");
             m.Add("kind=%s", h2::StartKindName(kind));
             AddRet(m, "ret", ret);
             if (s.ok) m.Add("mode=%d map=%d diff=%d", s.mode, s.map, s.diff);
@@ -481,7 +363,7 @@ namespace haloap {
 
         bool DetourStartForMap(void* opts) {
             bool r = Orig<StartForMapFn>(P_START_FOR_MAP)(opts);
-            h2::Msg m = NewMsg("load_result");
+            obs::Msg m = NewMsg("load_result");
             m.Add("ok=%d", r ? 1 : 0);
             AddCode(m);
             Send(m);
@@ -492,7 +374,7 @@ namespace haloap {
             const uintptr_t ret = reinterpret_cast<uintptr_t>(_ReturnAddress());
             GInfo g;
             ReadGlobals(&g);
-            h2::Msg m = NewMsg("complete");
+            obs::Msg m = NewMsg("complete");
             AddCode(m);
             if (g.ok) m.Add("mode=%d mapid=%d diff=%d run=%d won=%d", g.mode, g.mapid, g.diff, g.running, g.won);
             else m.Add("mode=- mapid=- diff=- run=- won=-");
@@ -502,7 +384,7 @@ namespace haloap {
         }
 
         void DetourTitle(uint16_t idx) {
-            h2::Msg m = NewMsg("title");
+            obs::Msg m = NewMsg("title");
             m.Add("idx=%u", static_cast<unsigned>(idx));
             AddCode(m);
             Send(m);
@@ -510,7 +392,7 @@ namespace haloap {
         }
 
         void SendShell(int msg, uintptr_t ret, uint32_t rep, bool flush) {
-            h2::Msg m = NewMsg("shell");
+            obs::Msg m = NewMsg("shell");
             m.Add("msg=%d", msg);
             if (ret) AddRet(m, "ret", ret);
             if (rep) m.Add("rep=%u", rep);
@@ -549,7 +431,7 @@ namespace haloap {
             ReadGlobals(&g);
             Orig<DiedFn>(P_DIED)(handle);
             h2::DeathKind kind = h2::ClassifyDeath(ret, g_killRet.load(std::memory_order_relaxed));
-            h2::Msg m = NewMsg("died");
+            obs::Msg m = NewMsg("died");
             m.Add("kind=%s", h2::DeathKindName(kind));
             AddRet(m, "src", ret);
             AddCode(m);
@@ -571,7 +453,7 @@ namespace haloap {
             Orig<SkullClaimFn>(P_SKULL_CLAIM)(n);
             GInfo g;
             ReadGlobals(&g);
-            h2::Msg m = NewMsg("skull");
+            obs::Msg m = NewMsg("skull");
             m.Add("path=claim n=%u", n);
             AddRet(m, "src", ret);
             AddCode(m);
@@ -584,7 +466,7 @@ namespace haloap {
             bool r = Orig<ClaimNotifyFn>(P_CLAIM_NOTIFY)(player, n);
             GInfo g;
             ReadGlobals(&g);
-            h2::Msg m = NewMsg("skull");
+            obs::Msg m = NewMsg("skull");
             m.Add("path=%s n=%d plr=%d", h2::ClaimPathName(h2::ClassifyClaim(ret, g_claimRet.load(std::memory_order_relaxed))), n, player);
             AddRet(m, "src", ret);
             AddCode(m);
@@ -603,7 +485,7 @@ namespace haloap {
             const bool haveAct = ReadActiveSkulls(&act);
             GInfo g;
             ReadGlobals(&g);
-            h2::Msg m = NewMsg("skull_apply");
+            obs::Msg m = NewMsg("skull_apply");
             if (haveMask) m.Add("mask=%llx", static_cast<unsigned long long>(mask)); else m.Add("mask=-");
             if (havePre) m.Add("pre=%llx", static_cast<unsigned long long>(pre)); else m.Add("pre=-");
             if (haveAct) m.Add("act=%llx", static_cast<unsigned long long>(act)); else m.Add("act=-");
@@ -620,98 +502,40 @@ namespace haloap {
                                              reinterpret_cast<void*>(DetourClaimNotify),
                                              reinterpret_cast<void*>(DetourSkullApply) };
 
-        // ---- install / uninstall (worker thread only) ----------------------------------------------------------
-        // Holds a loader reference on halo2.dll for the scope. Used ONLY around MinHook create/enable/remove (MinHook
-        // reads and patches without SEH). Scans and prints run unpinned under SEH (QA 7b m4). MCC's own FreeLibrary
-        // during the pin only drops its count; the real unload then happens in our destructor, on the worker thread,
-        // with no lock of ours held and outside MinHook's freeze window.
-        struct Pin {
-            HMODULE h = nullptr;
-            bool Acquire(HMODULE expect) {
-                if (!GetModuleHandleExA(0, "halo2.dll", &h) || h != expect) {
-                    Release();
-                    return false;
-                }
-                return true;
-            }
-            void Release() {
-                if (h) { FreeLibrary(h); h = nullptr; }
-            }
-            ~Pin() { Release(); }
-        };
-
-        constexpr int kStaleBuild = 1000;  // CreateAndEnable status: stale MinHook entry from a different build
-        constexpr int kNotAttempted = -1000;
-
-        // No printing here (pinned). Returns MH_OK (0) or the failing MH status / kStaleBuild.
-        int CreateAndEnable(int idx, void* target, bool sameBuild) {
-            void* orig = nullptr;
-            MH_STATUS s = MH_CreateHook(target, kDetours[idx], &orig);
-            if (s == MH_ERROR_ALREADY_CREATED) {
-                // A previous mapping of this module at the same address left an entry behind (MinHook cannot remove it
-                // while the memory is unmapped). Only when the module is mapped again, pinned and the same build:
-                // MH_RemoveHook restores the saved 5 bytes (identical) and frees the entry.
-                if (!sameBuild) return kStaleBuild;
-                MH_RemoveHook(target);
-                s = MH_CreateHook(target, kDetours[idx], &orig);
-            }
-            if (s != MH_OK) return static_cast<int>(s);
-            g_orig[idx].store(orig, std::memory_order_release);  // before the jump exists
-            s = MH_EnableHook(target);
-            if (s != MH_OK) {
-                MH_RemoveHook(target);
-                return static_cast<int>(s);
-            }
-            return MH_OK;
-        }
-
-        void AppendName(char* list, size_t cap, const char* s) {
-            size_t n = strlen(list);
-            if (n + 1 >= cap) return;
-            snprintf(list + n, cap - n, "%s%s", n ? "," : "", s);
-        }
-
-        // Forget everything without touching the old module's memory (it is gone, replaced, or foreign).
-        void ForgetModule() {
-            for (int i = 0; i < kHookCount; i++) g_on[i] = false;  // g_orig / g_target stay valid on purpose
-            for (int i = 0; i < P_COUNT; i++) { g_addr[i] = nullptr; g_hits[i] = 0; }
-            g_hdrVar = 0; g_gVar = 0; g_actVar = 0; g_tickVar = 0;
-            g_loadRet = 0; g_resetRet = 0; g_killRet = 0; g_claimRet = 0; g_skullArr = 0;
-            g_retryStage = 0;
-            g_mod = nullptr;
-        }
-
+        // ---- anchors and the observer description (worker thread only) -------------------------------------------
+        // Derived anchors are computed into a pending copy (seeded from the published ones) and published by Commit,
+        // pinned and before any jump exists.
         struct Derived {
             uintptr_t hdrVar = 0, gVar = 0, actVar = 0, tickVar = 0, killRet = 0, loadRet = 0, resetRet = 0, claimRet = 0, skullArr = 0;
         };
 
         // Fills only the fields that are still 0, from the resolved signature addresses (installed targets included:
         // the anchors sit beyond the 5 patched bytes). Everything under SEH; nothing is committed here.
-        void ComputeDerived(HMODULE h, const ModId& id, Derived* d, char* notes, size_t noteCap) {
-            if (!d->hdrVar) d->hdrVar = ResolveRip(g_addr[P_CACHE], kHdrFromCache, id.base, id.size);
-            if (!d->gVar) d->gVar = ResolveRip(g_addr[P_DIFF], kGlobalsFromDifficulty, id.base, id.size);
-            if (!d->actVar) d->actVar = ResolveRip(g_addr[P_DIED], kActorsFromDied, id.base, id.size);
-            if (!d->tickVar) d->tickVar = ResolveTickVar(g_addr[P_UNIT_DIE], id.base, id.size);
+        void ComputeDerived(HMODULE h, const obs::ModId& id, const uint8_t* const* a, Derived* d, char* notes, size_t noteCap) {
+            if (!d->hdrVar) d->hdrVar = ResolveRip(a[P_CACHE], kHdrFromCache, id.base, id.size);
+            if (!d->gVar) d->gVar = ResolveRip(a[P_DIFF], kGlobalsFromDifficulty, id.base, id.size);
+            if (!d->actVar) d->actVar = ResolveRip(a[P_DIED], kActorsFromDied, id.base, id.size);
+            if (!d->tickVar) d->tickVar = ResolveTickVar(a[P_UNIT_DIE], id.base, id.size);
             // Kill discriminator (M5): unit_die must contain E8 -> actor_died at +0x11F.
-            if (!d->killRet && g_addr[P_UNIT_DIE] && g_addr[P_DIED] &&
-                CallAtTargets(g_addr[P_UNIT_DIE] + kUnitDieCallOffset, g_addr[P_DIED])) {
-                d->killRet = reinterpret_cast<uintptr_t>(g_addr[P_UNIT_DIE]) + kUnitDieKillRetOffset;
+            if (!d->killRet && a[P_UNIT_DIE] && a[P_DIED] &&
+                obs::CallAtTargets(a[P_UNIT_DIE] + kUnitDieCallOffset, a[P_DIED])) {
+                d->killRet = reinterpret_cast<uintptr_t>(a[P_UNIT_DIE]) + kUnitDieKillRetOffset;
             }
             // Skull script path: skull_claim must contain E8 -> claim_notify at +0xF6; its return address marks the script caller.
-            if (!d->claimRet && g_addr[P_SKULL_CLAIM] && g_addr[P_CLAIM_NOTIFY] &&
-                CallAtTargets(g_addr[P_SKULL_CLAIM] + kSkullNotifyCallOffset, g_addr[P_CLAIM_NOTIFY])) {
-                d->claimRet = reinterpret_cast<uintptr_t>(g_addr[P_SKULL_CLAIM]) + kSkullNotifyRetOffset;
+            if (!d->claimRet && a[P_SKULL_CLAIM] && a[P_CLAIM_NOTIFY] &&
+                obs::CallAtTargets(a[P_SKULL_CLAIM] + kSkullNotifyCallOffset, a[P_CLAIM_NOTIFY])) {
+                d->claimRet = reinterpret_cast<uintptr_t>(a[P_SKULL_CLAIM]) + kSkullNotifyRetOffset;
             }
-            if (!d->skullArr) d->skullArr = ResolveImageRel(g_addr[P_SKULL_QUERY], id.base, id.size);
+            if (!d->skullArr) d->skullArr = ResolveImageRel(a[P_SKULL_QUERY], id.base, id.size);
             // Load return address: game_start_for_map's first call is game_start. Reset = the other caller of game_start.
-            if (!d->loadRet && g_addr[P_START_FOR_MAP] && g_addr[P_GAME_START] &&
-                CallAtTargets(g_addr[P_START_FOR_MAP] + kStartCallOffset, g_addr[P_GAME_START])) {
-                d->loadRet = reinterpret_cast<uintptr_t>(g_addr[P_START_FOR_MAP]) + kStartRetOffset;
+            if (!d->loadRet && a[P_START_FOR_MAP] && a[P_GAME_START] &&
+                obs::CallAtTargets(a[P_START_FOR_MAP] + kStartCallOffset, a[P_GAME_START])) {
+                d->loadRet = reinterpret_cast<uintptr_t>(a[P_START_FOR_MAP]) + kStartRetOffset;
             }
             if (d->loadRet && !d->resetRet) {
-                const uint8_t* loadSite = g_addr[P_START_FOR_MAP] + kStartCallOffset;
+                const uint8_t* loadSite = a[P_START_FOR_MAP] + kStartCallOffset;
                 const uint8_t* sites[4] = {};
-                size_t n = CallSitesInModule(h, g_addr[P_GAME_START], sites, 4);
+                size_t n = obs::CallSitesInModule(h, a[P_GAME_START], sites, 4);
                 if (n == kGameStartCallSites) {
                     for (size_t k = 0; k < n; k++)
                         if (sites[k] != loadSite) d->resetRet = reinterpret_cast<uintptr_t>(sites[k]) + 5;
@@ -721,214 +545,64 @@ namespace haloap {
             }
         }
 
-        bool Incomplete() {
-            for (int i = 0; i < kHookCount; i++) if (!g_on[i]) return true;
+        Derived g_pending;
+
+        void Decorate(obs::Msg& m) {
+            int tick;
+            if (ReadTick(&tick)) m.Add("tick=%d", tick);
+            else m.Add("tick=-");
+        }
+
+        void Derive(const obs::DeriveCtx& c) {
+            Derived& d = g_pending;
+            d.hdrVar = g_hdrVar; d.gVar = g_gVar; d.actVar = g_actVar; d.tickVar = g_tickVar;
+            d.killRet = g_killRet; d.loadRet = g_loadRet; d.resetRet = g_resetRet; d.claimRet = g_claimRet; d.skullArr = g_skullArr;
+            ComputeDerived(c.h, c.id, c.addr, &d, c.notes, c.noteCap);
+        }
+
+        void Commit() {
+            const Derived& d = g_pending;
+            g_hdrVar = d.hdrVar; g_gVar = d.gVar; g_actVar = d.actVar; g_tickVar = d.tickVar;
+            g_killRet = d.killRet; g_loadRet = d.loadRet; g_resetRet = d.resetRet;
+            g_claimRet = d.claimRet; g_skullArr = d.skullArr;
+        }
+
+        void ClearAnchors() {
+            g_hdrVar = 0; g_gVar = 0; g_actVar = 0; g_tickVar = 0;
+            g_loadRet = 0; g_resetRet = 0; g_killRet = 0; g_claimRet = 0; g_skullArr = 0;
+        }
+
+        bool AnchorsMissing() {
             return !g_hdrVar.load() || !g_gVar.load() || !g_actVar.load() || !g_tickVar.load() || !g_killRet.load() ||
                    !g_loadRet.load() || !g_resetRet.load() || !g_claimRet.load() || !g_skullArr.load();
         }
 
-        // One scan/install pass. pass 0 = fresh attach (everything unknown); pass 1/2 = retry of what is still missing.
-        // Never rescans a signature that is already resolved (installed prologues are patched, so they could not match).
-        // Returns false if the pass could not run (module vanished or changed under it).
-        bool Pass(HMODULE h, int pass) {
-            ModId id;
-            if (!ReadIdentity(h, &id)) return false;
-            const ModId prev = g_id;
-            if (pass == 0) {
-                for (int i = 0; i < P_COUNT; i++) { g_addr[i] = nullptr; g_hits[i] = 0; }
-            } else if (!(id == g_id)) {
-                return false;
-            }
-            const auto base = reinterpret_cast<const uint8_t*>(h);
-            char notes[320] = {};
-
-            // 1. scan, unpinned (SEH inside FindUniquePatternInModule)
-            for (int i = 0; i < P_COUNT; i++) {
-                if (g_addr[i]) continue;
-                g_addr[i] = static_cast<const uint8_t*>(FindUniquePatternInModule(h, *kPatText[i], &g_hits[i]));
-                if (!g_addr[i]) printf("[h2] signature %s: %s\n", kPatName[i], g_hits[i] ? "ambiguous (2+ matches)" : "not found");
-            }
-            Derived d;
-            d.hdrVar = g_hdrVar; d.gVar = g_gVar; d.actVar = g_actVar; d.tickVar = g_tickVar;
-            d.killRet = g_killRet; d.loadRet = g_loadRet; d.resetRet = g_resetRet; d.claimRet = g_claimRet; d.skullArr = g_skullArr;
-            ComputeDerived(h, id, &d, notes, sizeof(notes));
-
-            // 2. the module must still be the one we read: nothing found above is used otherwise
-            ModId again;
-            if (GetModuleHandleA("halo2.dll") != h || !ReadIdentity(h, &again) || !(again == id)) {
-                if (!g_pinFailPrinted) printf("[h2] halo2.dll changed while scanning; will retry\n");
-                g_pinFailPrinted = true;
-                if (pass == 0) { for (int i = 0; i < P_COUNT; i++) g_addr[i] = nullptr; }
-                return false;
-            }
-            g_pinFailPrinted = false;
-            const bool sameBuild = pass != 0 || (prev.stamp == id.stamp && prev.size == id.size);  // at another base the old entries stay stale
-            if (pass == 0) {
-                g_id = id;
-                g_mod = h;
-                g_base = id.base;
-                g_size = id.size;
-                g_attachTick = GetTickCount64();
-                g_retryStage = 0;
-                h2::Msg att = NewMsg("attach");
-                att.Add("base=%llx stamp=%x size=%x", static_cast<unsigned long long>(id.base), id.stamp, id.size);
-                Send(att);
-                printf("[h2] halo2.dll at %p (stamp %08x, size %x)\n", h, id.stamp, id.size);
-            }
-            if (notes[0]) printf("[h2] %s\n", notes);
-
-            // 3. pin only around MinHook create+enable, re-check identity inside the pin, no printing while pinned
-            int status[kHookCount];
-            bool pinned = false, need = false;
-            for (int i = 0; i < kHookCount; i++) {
-                status[i] = kNotAttempted;
-                if (!g_on[i] && g_addr[i]) need = true;
-            }
-            if (need) {
-                Pin pin;
-                ModId inPin;
-                pinned = pin.Acquire(h) && ReadIdentity(h, &inPin) && inPin == id;
-                if (pinned) {
-                    g_hdrVar = d.hdrVar; g_gVar = d.gVar; g_actVar = d.actVar; g_tickVar = d.tickVar;  // commit before any jump exists
-                    g_killRet = d.killRet; g_loadRet = d.loadRet; g_resetRet = d.resetRet;
-                    g_claimRet = d.claimRet; g_skullArr = d.skullArr;
-                    for (int i = 0; i < kHookCount; i++) {
-                        if (g_on[i] || !g_addr[i]) continue;
-                        void* target = const_cast<uint8_t*>(g_addr[i]);
-                        g_target[i] = target;
-                        status[i] = CreateAndEnable(i, target, sameBuild);
-                        if (status[i] == MH_OK) g_on[i] = true;
-                    }
-                }
-            } else {
-                g_hdrVar = d.hdrVar; g_gVar = d.gVar; g_actVar = d.actVar; g_tickVar = d.tickVar;
-                g_killRet = d.killRet; g_loadRet = d.loadRet; g_resetRet = d.resetRet;
-                g_claimRet = d.claimRet; g_skullArr = d.skullArr;
-                pinned = true;
-            }
-            if (!pinned) {
-                printf("[h2] could not pin halo2.dll or it changed; will retry\n");
-                return false;
-            }
-
-            // 4. report (unpinned)
-            char on[200] = {}, off[240] = {};
-            for (int i = 0; i < kHookCount; i++) {
-                if (g_on[i]) {
-                    AppendName(on, sizeof(on), kPatName[i]);
-                    if (status[i] == MH_OK)
-                        printf("[h2] hook %s installed at RVA %llx\n", kPatName[i], static_cast<unsigned long long>(g_addr[i] - base));
-                    continue;
-                }
-                char entry[48];
-                if (!g_addr[i]) snprintf(entry, sizeof(entry), "%s:%s", kPatName[i], g_hits[i] ? "ambig" : "none");
-                else snprintf(entry, sizeof(entry), "%s:hookfail", kPatName[i]);
-                AppendName(off, sizeof(off), entry);
-                if (status[i] == kStaleBuild) printf("[h2] %s: stale MinHook entry from a different build, hook off\n", kPatName[i]);
-                else if (status[i] != kNotAttempted) printf("[h2] %s: MinHook failed: %d (%s)\n", kPatName[i], status[i], MH_StatusToString(static_cast<MH_STATUS>(status[i])));
-            }
+        void Report() {
             if (!g_killRet.load()) printf("[h2] unit_die -> actor_died link not verified: deaths are reported as kind=unknown\n");
             if (!g_loadRet.load()) printf("[h2] game_start_for_map -> game_start link not verified: starts are reported as kind=other\n");
             if (!g_tickVar.load()) printf("[h2] game_time_get not verified: events carry tick=-\n");
             if (!g_claimRet.load()) printf("[h2] skull_claim -> claim_notify link not verified: claim_notify lines are path=notify_unknown\n");
             if (!g_skullArr.load()) printf("[h2] skull active array not verified: skull_apply lines carry pre=- act=-\n");
+        }
 
-            h2::Msg ins = NewMsg("install");
-            ins.Add("pass=%d on=%s off=%s", pass, on[0] ? on : "-", off[0] ? off : "-");
+        void InstallFields(obs::Msg& ins) {
             ins.Add("hdr=%d g=%d act=%d tick=%d kill=%d load=%d reset=%d", g_hdrVar.load() ? 1 : 0, g_gVar.load() ? 1 : 0,
                     g_actVar.load() ? 1 : 0, g_tickVar.load() ? 1 : 0, g_killRet.load() ? 1 : 0, g_loadRet.load() ? 1 : 0,
                     g_resetRet.load() ? 1 : 0);
             ins.Add("claim=%d skarr=%d", g_claimRet.load() ? 1 : 0, g_skullArr.load() ? 1 : 0);
-            Send(ins);
-            return true;
         }
 
-        void Attach(HMODULE h) {
-            if (!Pass(h, 0)) g_mod = nullptr;  // retried on the next 100 ms slice
-        }
-
-        void CheckIntegrity() {
-            ModId id;
-            const bool changed = !ReadIdentity(g_mod, &id) || !(id == g_id);
-            bool intact[kHookCount];
-            int enabled, intactCount;
-            CheckPrologues(intact, &enabled, &intactCount);
-            switch (h2::DecideReattach(changed, enabled, intactCount)) {
-            case h2::Reattach::None:
-                return;
-            case h2::Reattach::DropChanged: {
-                // Foreign change of some functions: keep the working hooks and every anchor, drop only the changed ones.
-                char names[160] = {};
-                for (int i = 0; i < kHookCount; i++) {
-                    if (g_on[i] && !intact[i]) {
-                        g_on[i] = false;
-                        g_addr[i] = nullptr;  // a later retry rescans it (and finds nothing while the foreign patch is there)
-                        AppendName(names, sizeof(names), kPatName[i]);
-                    }
-                }
-                printf("[h2] prologue of %s changed by something else: those hooks dropped, the rest kept\n", names);
-                h2::Msg m = NewMsg("hookdrop");
-                m.Add("dropped=%s", names);
-                Send(m);
-                return;
-            }
-            case h2::Reattach::Full:
-                break;
-            }
-            printf("[h2] halo2.dll identity changed or every hook prologue is gone: re-attaching\n");
-            HMODULE h = g_mod;
-            ForgetModule();
-            h2::Msg m = NewMsg("reattach");
-            Send(m);
-            Attach(h);
-        }
+        const obs::ObserverSpec kSpec = { h2::kTag, "h2", "halo2.dll", P_COUNT, kHookCount, kPatName, kPatText, kDetours,
+                                          Decorate, Derive, Commit, ClearAnchors, AnchorsMissing, Report, InstallFields };
+        obs::ModuleObserver g_obs(kSpec);
     }  // namespace
 
     void H2Tick(PipeClient* pipe) {
-        g_pipe.store(pipe, std::memory_order_release);
-        HMODULE cur = GetModuleHandleA("halo2.dll");  // no refcount: a compare only
-        if (cur != g_mod) {
-            if (g_mod) {
-                printf("[h2] halo2.dll %s\n", cur ? "replaced" : "unloaded");
-                ForgetModule();
-                g_base = 0;
-                h2::Msg m = NewMsg(cur ? "replaced" : "unload");
-                Send(m);
-            }
-            g_tickCount = 0;
-            if (cur) Attach(cur);
-            return;
-        }
-        if (!cur) return;
-        if (++g_tickCount >= 20) {  // ~2 s
-            g_tickCount = 0;
-            CheckIntegrity();
-            if (!g_mod) return;
-        }
-        // Bounded retries of whatever is still missing (the loader may still have been working at attach time)
-        if (g_retryStage < 2) {
-            ULONGLONG elapsed = GetTickCount64() - g_attachTick;
-            if (elapsed >= (g_retryStage == 0 ? 2000ULL : 10000ULL)) {
-                g_retryStage++;
-                if (Incomplete()) Pass(g_mod, g_retryStage);
-            }
-        }
+        g_obs.Tick(pipe, GetModuleHandleA("halo2.dll"));  // no refcount: a compare only
     }
 
     void UninstallH2Observe() {
-        if (g_mod) {
-            Pin pin;
-            ModId id;
-            // Only touch memory when this is still the module we hooked.
-            if (pin.Acquire(g_mod) && ReadIdentity(g_mod, &id) && id == g_id) {
-                for (int i = kHookCount - 1; i >= 0; i--) {
-                    if (g_on[i]) MH_RemoveHook(g_target[i]);  // disables first; the entry stays if it fails
-                }
-            }
-            for (int i = 0; i < kHookCount; i++) g_on[i] = false;
-            g_mod = nullptr;
-        }
-        g_pipe.store(nullptr, std::memory_order_release);  // detours copy the pointer once per message
+        g_obs.Uninstall();
     }
 
 }  // namespace haloap

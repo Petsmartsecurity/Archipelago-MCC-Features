@@ -2,6 +2,8 @@
 #include "item_handler.h"
 #include "hooks/skull_hook.h"
 #include "hooks/effects.h"
+#include "hooks/module_observer.h"
+#include "shared/observe_setting.h"
 #include "shared/common.h"
 #include <cstdio>
 #include <vector>
@@ -277,6 +279,22 @@ void PipeClient::HandleMessage(const std::string& message)
     {
         // Halo 2 locking does not exist yet (observe-only build): accepted and ignored.
         printf("[pipe] H2 progress message ignored (no H2 locking yet)\n");
+        return;
+    }
+
+    if (message.rfind(haloap::kObserveMessagePrefix, 0) == 0)
+    {
+        // Launcher setting `observe_logging` (docs/FRIENDS-SETUP.md): off = the Halo 2 / Halo 3 observers never install hooks.
+        bool on = true;
+        if (haloap::ParseObserveMessage(message.c_str(), &on))
+        {
+            haloap::obs::SetObserveLogging(on);
+            printf("[pipe] Observe logging (Halo 2 / Halo 3 telemetry hooks): %s\n", on ? "on" : "off");
+        }
+        else
+        {
+            printf("[pipe] bad OBSERVE message ignored: %s\n", message.c_str());
+        }
         return;
     }
 

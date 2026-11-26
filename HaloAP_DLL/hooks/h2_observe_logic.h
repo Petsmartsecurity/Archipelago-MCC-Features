@@ -1,10 +1,9 @@
 #pragma once
 // Pure logic of the Halo 2 observe-only hook set (hooks/h2_observe.cpp): no game memory, no MinHook, no Windows,
 // so mcc-ap/tests/test_h2_observe.cpp can run it on fake buffers.
-#include <cstdarg>
+#include "module_observer_logic.h"
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 
 namespace haloap {
@@ -12,43 +11,13 @@ namespace h2 {
 
     constexpr uint32_t kHeaderMagic = 0x68656164;  // 'head' (as the first dword of a cache file header)
 
-    // ---- message building -------------------------------------------------------------------------------------
-    constexpr size_t kMsgMax = 400;  // whole message including the terminator
+    // ---- message building (shared builder, hooks/module_observer_logic.h) -----------------------------------------
+    using obs::kMsgMax;
+    constexpr const char* kTag = "H2";  // line prefix: "H2: ev=<name> n=<u> tid=<u> k=v ..."
 
-    // Bounded, stack-only message builder ("H2: ev=<name> n=<u> tid=<u> k=v ..."). No heap, no statics: re-entrant.
-    class Msg {
+    class Msg : public obs::Msg {
     public:
-        Msg(const char* ev, uint32_t n, uint32_t tid) { Add("H2: ev=%s n=%u tid=%u", ev, n, tid); }
-
-        // Appends " " + formatted text (callers pass "k=v" with already sanitised values).
-        void Add(const char* fmt, ...) {
-            if (m_len >= kMsgMax - 1) { m_truncated = true; return; }
-            if (m_len) m_buf[m_len++] = ' ';
-            va_list ap;
-            va_start(ap, fmt);
-            int r = vsnprintf(m_buf + m_len, kMsgMax - m_len, fmt, ap);
-            va_end(ap);
-            if (r < 0) { m_buf[m_len] = 0; return; }
-            if (static_cast<size_t>(r) >= kMsgMax - m_len) { m_len = kMsgMax - 1; m_truncated = true; }
-            else m_len += static_cast<size_t>(r);
-            m_buf[m_len] = 0;
-        }
-
-        // Last line of defence: the launcher forwards this as text, so nothing outside printable ASCII may leave.
-        const char* Finish() {
-            for (size_t i = 0; i < m_len; i++) {
-                auto c = static_cast<unsigned char>(m_buf[i]);
-                if (c < 0x20 || c > 0x7E) m_buf[i] = '_';
-            }
-            return m_buf;
-        }
-        size_t size() const { return m_len; }
-        bool truncated() const { return m_truncated; }
-
-    private:
-        char m_buf[kMsgMax] = {};
-        size_t m_len = 0;
-        bool m_truncated = false;
+        Msg(const char* ev, uint32_t n, uint32_t tid) : obs::Msg(kTag, ev, n, tid) {}
     };
 
     // ---- sanitising -------------------------------------------------------------------------------------------
@@ -140,47 +109,13 @@ namespace h2 {
         return m;
     }
 
-    // What the ~2 s integrity check does (QA 7b m2). enabled = hooks we think are installed, intact = of those, how
-    // many still start with MinHook's jump. A reload looks like "identity same, no prologue is ours any more";
-    // a foreign patch on one function looks like "some are intact": drop only those, keep anchors and the rest.
-    enum class Reattach { None, DropChanged, Full };
-    inline Reattach DecideReattach(bool identityChanged, int enabled, int intact) {
-        if (identityChanged) return Reattach::Full;
-        if (enabled <= 0) return Reattach::None;
-        if (intact <= 0) return Reattach::Full;
-        return intact < enabled ? Reattach::DropChanged : Reattach::None;
-    }
-
-    // Shell message coalescing (QA 7b n5): after an id repeats, only every kShellRepeatEvery-th repeat is sent.
-    constexpr uint32_t kShellRepeatEvery = 64;
-    inline bool ShellRepeatDue(uint32_t repeatCount) { return repeatCount && repeatCount % kShellRepeatEvery == 0; }
-
-    // E8 rel32 call site at `site` (address of the E8 byte) targets `target`? Reads site[0..4] only.
-    inline bool CallTargets(const uint8_t* site, const uint8_t* target) {
-        if (site[0] != 0xE8) return false;
-        int32_t rel;
-        memcpy(&rel, site + 1, sizeof(rel));
-        return site + 5 + rel == target;
-    }
-
-    // Collects the addresses of E8 rel32 calls to `target` inside [code, code+len); returns how many exist
-    // (stores up to cap of them). Used for "game_start has exactly two callers".
-    inline size_t FindCallSites(const uint8_t* code, size_t len, const uint8_t* target, const uint8_t** out, size_t cap) {
-        size_t n = 0;
-        if (len < 5) return 0;
-        const uint8_t* p = code;
-        const uint8_t* end = code + len - 4;  // last byte at which a 5-byte call starts is code+len-5
-        while (p < end) {
-            p = static_cast<const uint8_t*>(memchr(p, 0xE8, static_cast<size_t>(end - p)));
-            if (!p) break;
-            if (CallTargets(p, target)) {
-                if (n < cap) out[n] = p;
-                n++;
-            }
-            p++;
-        }
-        return n;
-    }
+    // Lifecycle helpers shared with the other observers (hooks/module_observer_logic.h).
+    using obs::Reattach;
+    using obs::DecideReattach;
+    using obs::kShellRepeatEvery;
+    using obs::ShellRepeatDue;
+    using obs::CallTargets;
+    using obs::FindCallSites;
 
     // ---- data arrays (QA 8.H2.7a m6) --------------------------------------------------------------------------
     // Header: name[32], +0x20 max count, +0x24 element size, +0x2C signature, +0x48 offset of element 0.

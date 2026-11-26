@@ -146,6 +146,9 @@ extern "C" {
     //   pTarget [in] A pointer to the target function.
     MH_STATUS WINAPI MH_RemoveHook(LPVOID pTarget);
 
+    // HaloAP addition: drops a hook entry whose target memory is already unmapped, without touching memory.
+    MH_STATUS WINAPI MH_ForgetHook(LPVOID pTarget);
+
     // Enables an already created hook.
     // Parameters:
     //   pTarget [in] A pointer to the target function.

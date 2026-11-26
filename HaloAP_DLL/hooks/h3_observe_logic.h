@@ -19,39 +19,11 @@ namespace h3 {
     using h2::SafeChar;
     using h2::SanitizeAscii;
 
-    // Bounded, stack-only message builder ("H3: ev=<name> n=<u> tid=<u> k=v ..."). No heap, no statics: re-entrant.
-    class Msg {
+    constexpr const char* kTag = "H3";  // line prefix: "H3: ev=<name> n=<u> tid=<u> k=v ..."
+
+    class Msg : public obs::Msg {
     public:
-        Msg(const char* ev, uint32_t n, uint32_t tid) { Add("H3: ev=%s n=%u tid=%u", ev, n, tid); }
-
-        void Add(const char* fmt, ...) {
-            if (m_len >= kMsgMax - 1) { m_truncated = true; return; }
-            if (m_len) m_buf[m_len++] = ' ';
-            va_list ap;
-            va_start(ap, fmt);
-            int r = vsnprintf(m_buf + m_len, kMsgMax - m_len, fmt, ap);
-            va_end(ap);
-            if (r < 0) { m_buf[m_len] = 0; return; }
-            if (static_cast<size_t>(r) >= kMsgMax - m_len) { m_len = kMsgMax - 1; m_truncated = true; }
-            else m_len += static_cast<size_t>(r);
-            m_buf[m_len] = 0;
-        }
-
-        // The launcher forwards this as text: nothing outside printable ASCII may leave.
-        const char* Finish() {
-            for (size_t i = 0; i < m_len; i++) {
-                auto c = static_cast<unsigned char>(m_buf[i]);
-                if (c < 0x20 || c > 0x7E) m_buf[i] = '_';
-            }
-            return m_buf;
-        }
-        size_t size() const { return m_len; }
-        bool truncated() const { return m_truncated; }
-
-    private:
-        char m_buf[kMsgMax] = {};
-        size_t m_len = 0;
-        bool m_truncated = false;
+        Msg(const char* ev, uint32_t n, uint32_t tid) : obs::Msg(kTag, ev, n, tid) {}
     };
 
     // Last path component of a narrow string (separator '\\' or '/'), sanitised; maxChars bounds the read

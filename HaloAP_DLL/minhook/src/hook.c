@@ -719,6 +719,36 @@ MH_STATUS WINAPI MH_RemoveHook(LPVOID pTarget)
 }
 
 //-------------------------------------------------------------------------
+// HaloAP addition (not in upstream MinHook): drops the entry of a hook whose target memory is gone (its DLL was
+// unmapped) WITHOUT touching that memory. MH_RemoveHook / MH_Uninitialize would VirtualProtect the dead address, fail
+// with MH_ERROR_MEMORY_PROTECT, and keep the entry enabled, so a later mapping at that address would get the old
+// backup bytes written into it. The trampoline is deliberately not freed: a thread still inside a detour may
+// call through it (the slot is leaked, 64 bytes).
+MH_STATUS WINAPI MH_ForgetHook(LPVOID pTarget)
+{
+    MH_STATUS status = MH_OK;
+
+    EnterSpinLock();
+
+    if (g_hHeap != NULL)
+    {
+        UINT pos = FindHookEntry(pTarget);
+        if (pos != INVALID_HOOK_POS)
+            DeleteHookEntry(pos);
+        else
+            status = MH_ERROR_NOT_CREATED;
+    }
+    else
+    {
+        status = MH_ERROR_NOT_INITIALIZED;
+    }
+
+    LeaveSpinLock();
+
+    return status;
+}
+
+//-------------------------------------------------------------------------
 static MH_STATUS EnableHook(LPVOID pTarget, BOOL enable)
 {
     MH_STATUS status = MH_OK;
