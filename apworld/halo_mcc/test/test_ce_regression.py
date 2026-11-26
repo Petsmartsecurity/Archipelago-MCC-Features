@@ -12,7 +12,9 @@ from .ce_snapshot import snapshot
 
 GOLDEN = json.loads((pathlib.Path(__file__).parent / "ce_golden.json").read_text())
 NEW_SLOT_KEYS = {"ce_enabled", "h2_enabled", "h2_final_mission", "kill_infection_interval", "killsanity_version", "effect_items",
-                "goal_mode", "goal_game"}
+                "goal_mode", "goal_game",
+                "starting_mission", "kill_milestone_max_percent", "kill_milestone_progression_percent", "kill_difficulty",
+                "skulls_required", "trap_percentage"}  # the last six: Universal Tracker regen (PLAN phase 6 tracker)
 
 
 class TestCEOnlyUnchanged(unittest.TestCase):
@@ -25,6 +27,14 @@ class TestCEOnlyUnchanged(unittest.TestCase):
                              {k: v for k, v in want["slot"].items() if k not in NEW_SLOT_KEYS})
             self.assertEqual(got["slot"]["effect_items"], int(bool(case["options"].get("effect_items", False))))
             self.assertEqual((got["slot"]["goal_mode"], got["slot"]["goal_game"]), (0, ""))  # the default is per_game
+            opts = case["options"]
+            self.assertEqual(got["slot"]["starting_mission"], want["start"])
+            self.assertEqual(got["slot"]["kill_milestone_max_percent"], opts.get("kill_milestone_max_percent", 80))
+            self.assertEqual(got["slot"]["kill_milestone_progression_percent"],
+                             opts.get("kill_milestone_progression_percent", 50))
+            self.assertEqual(got["slot"]["kill_difficulty"], {"normal": 0, "legendary": 1, "heroic": 2}[opts.get("kill_difficulty", "normal")])
+            self.assertEqual(got["slot"]["skulls_required"], opts.get("skulls_required", 8))
+            self.assertEqual(got["slot"]["trap_percentage"], opts.get("trap_percentage", 20))
             self.assertEqual(got["slot"]["ce_enabled"], 1)
             self.assertEqual((got["slot"]["h2_enabled"], got["slot"]["h2_final_mission"]), (0, ""))
             got = {k: v for k, v in got.items() if k != "slot"}

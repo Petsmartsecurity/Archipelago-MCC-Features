@@ -53,6 +53,13 @@ class MCCWorld(World):
     def get_filler_item_name(self):
         return items.get_filler_item_name(self)
 
+    # Universal Tracker (FarrakKilhn): regenerate this slot from its slot_data without the player's YAML
+    ut_can_gen_without_yaml = True
+
+    @staticmethod
+    def interpret_slot_data(slot_data: dict[str, Any]) -> dict[str, Any]:
+        return slot_data   # generate_early reads it back from multiworld.re_gen_passthrough
+
     def generate_early(self):
         generate_early.generate_early(self)
 
@@ -66,6 +73,7 @@ class MCCWorld(World):
             # only with Halo 2 on, so a CE-only seed's slot_data is exactly what it was (ce_golden)
             data["h2_skullsanity"] = self.options.h2_skullsanity.value
             data["h2_legendary_skulls"] = int(bool(self.options.h2_legendary_skulls.value))
+            data["h2_skulls_required"] = self.options.h2_skulls_required.value
         return data
 
     def _slot_data(self) -> dict[str, Any]:
@@ -85,4 +93,11 @@ class MCCWorld(World):
             # game whose final mission wins ("CE" / "H2"); the other game's final_mission key is "" (it is an ordinary mission).
             "goal_mode": self.options.goal_mode.value,
             "goal_game": self.goal_game,
+            # Universal Tracker (every option / draw the rules depend on; append-only)
+            "starting_mission": self.starting_mission,
+            "kill_milestone_max_percent": self.options.kill_milestone_max_percent.value,
+            "kill_milestone_progression_percent": self.options.kill_milestone_progression_percent.value,
+            "kill_difficulty": self.options.kill_difficulty.value,
+            "skulls_required": self.options.skulls_required.value,
+            "trap_percentage": self.options.trap_percentage.value,
         }

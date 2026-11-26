@@ -10,10 +10,34 @@ from .data.skulls import *
 H2_RANDOM = 16  # H2FinalMission.option_random_choice; the other values are the mission's MCC number (2..15)
 
 
+# slot_data key -> option name, for the options a seed's slot_data carries (Universal Tracker regen, see _apply_passthrough)
+PASSTHROUGH_OPTIONS = {
+    "skullsanity": "skullsanity", "kill_milestone_interval": "kill_milestone_interval",
+    "kill_milestone_max_percent": "kill_milestone_max_percent",
+    "kill_milestone_progression_percent": "kill_milestone_progression_percent", "kill_difficulty": "kill_difficulty",
+    "kill_infection_interval": "kill_infection_interval", "kill_species_checks": "kill_species_checks",
+    "skulls_required": "skulls_required", "ce_enabled": "ce_enabled", "h2_enabled": "h2_enabled",
+    "goal_mode": "goal_mode", "effect_items": "effect_items", "trap_percentage": "trap_percentage",
+    "h2_skullsanity": "h2_skullsanity", "h2_legendary_skulls": "h2_legendary_skulls", "h2_skulls_required": "h2_skulls_required",
+}
+
+
+def passthrough_slot_data(world):
+    """Universal Tracker regenerates a slot with multiworld.re_gen_passthrough[game] = the slot_data of the real seed (and default
+    options if no YAML). None outside UT."""
+    return getattr(world.multiworld, "re_gen_passthrough", {}).get(world.game) or None
+
+
 def generate_early(world):
+    slot = passthrough_slot_data(world)
+    if slot:
+        # every option comes from the real seed's slot_data; keys an older seed lacks keep the option default
+        for key, name in PASSTHROUGH_OPTIONS.items():
+            if key in slot:
+                getattr(world.options, name).value = int(slot[key])
     ce = bool(world.options.ce_enabled.value)
     h2 = bool(world.options.h2_enabled.value)
-    if h2 and os.environ.get(EXPERIMENTAL_ENV) != "1":
+    if h2 and not slot and os.environ.get(EXPERIMENTAL_ENV) != "1":
         raise OptionError(f"{world.player_name}: h2_enabled is experimental (Halo 2 only observes in the game for now) and "
                           f"is not available in release seeds; remove it, or set {EXPERIMENTAL_ENV}=1 to generate a test seed")
     if not (ce or h2):
@@ -70,12 +94,22 @@ def generate_early(world):
         if h2 and world.goal_game != "H2":
             world.h2_final_mission = ""
             world.h2_missions = h2_all
+    if slot:
+        # RNG-derived choices come from the seed. The draws above and below still run (their results are discarded) so the
+        # RNG stream, hence the filler draws, is identical to the original generation when UT reuses its seed.
+        world.final_mission = slot.get("final_mission", "") if ce else ""
+        world.h2_final_mission = slot.get("h2_final_mission", "") if h2 else ""
+        world.goal_game = slot.get("goal_game", "")
+        world.missions = [m for m in ce_all if m != world.final_mission]
+        world.h2_missions = [m for m in h2_all if m != world.h2_final_mission]
     if world.final_mission:
         print("final Mission: " + world.final_mission)  # after goal_mode, which may demote it (QA 6.G minor)
 
     # every enabled game's non-final missions, CE first: the starting mission is drawn from all of them
     candidates = world.missions + world.h2_missions
     world.starting_mission = world.random.choice(candidates)
+    if slot and slot.get("starting_mission"):
+        world.starting_mission = slot["starting_mission"]
 
     if world.options.skullsanity.value >=2 and ce:
         skull_list = []
